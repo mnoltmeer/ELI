@@ -1,0 +1,14 @@
+/__history
+/__recovery
+/eliForms
+/FilesDLL
+/release 1.03.01
+/SomeFuncDLL
+/Win32/Debug/*.*
+/Win32/Release/!*.dll
+*.odt
+*.docx
+*.doc
+*.local
+*.res
+*.stat
