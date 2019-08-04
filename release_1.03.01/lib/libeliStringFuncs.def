@@ -1,0 +1,14 @@
+EXPORTS
+    DllMain@12 @1
+    eCopyFromPos@4 @2
+    eCopyFromSymb@4 @3
+    eCopyWhileNotPos@4 @4
+    eCopyWhileNotSymb@4 @5
+    eFindSymbPos@4 @6
+    eInsertSymbInPos@4 @7
+    eInsertSymbInSymb@4 @8
+    eLtrim@4 @9
+    eShowSymbols@4 @10
+    eStrIgnInclude@4 @11
+    eStrInclude@4 @12
+    eSymbolCount@4 @13
