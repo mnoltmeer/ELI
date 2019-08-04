@@ -1,0 +1,298 @@
+#include <vcl.h>
+#include <windows.h>
+
+#pragma hdrstop
+#pragma argsused
+
+#include "..\MyFunc.h"
+
+#include "eli_interface.h"
+
+String initdir;
+
+extern "C"
+{
+__declspec(dllexport) void __stdcall eIsFileExist(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+  wchar_t res[3];
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   int i = FileExists(path);
+	   swprintf(res, L"%d", i);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eCopyFile(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+       String path_fr = ep->GetParamToStr(L"pFrom"), path_to = ep->GetParamToStr(L"pTo");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path_fr[1] == '.')
+		 {
+		   path_fr.Delete(1, 1);
+		   path_fr = String(ep->GetInitDir()) + "\\" + path_fr;
+		 }
+
+	   if (path_to[1] == '.')
+		 {
+		   path_to.Delete(1, 1);
+	  	   path_to = String(ep->GetInitDir()) + "\\" + path_to;
+		 }
+
+	   int i = CopyFile(path_fr, path_to, bool(ep->GetParamToInt(L"pFailExist")));
+	   swprintf(res, L"%d", i);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eDeleteFile(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   int i = DeleteFile(path);
+	   swprintf(res, L"%d", i);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eReadTextFile(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  String res;
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   res = LoadTextFile(path);
+	 }
+  catch (Exception &e)
+	 {
+	   res = "";
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res.c_str());
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eWriteTextFile(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  String res;
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   String mode = ep->GetParamToStr(L"pMode");
+
+	   if (mode == "ap")
+		 {
+		   AddToFile(ep->GetParamToStr(L"pFile"), ep->GetParamToStr(L"pText"));
+		   res = "1";
+		 }
+	   else if (mode == "ow")
+		 {
+		   SaveToFile(ep->GetParamToStr(L"pFile"), ep->GetParamToStr(L"pText"));
+		   res = "1";
+		 }
+	   else
+		 {
+           res = 0;
+         }
+	 }
+  catch (Exception &e)
+	 {
+	   res = "-1";
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res.c_str());
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eFileSize(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   int sz = GetFileSize(path);
+       swprintf(res, L"%d", sz);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eCopyDir(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+	   String path_src = ep->GetParamToStr(L"pDirSrc"),
+			  path_dst = ep->GetParamToStr(L"pDirDest");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path_src[1] == '.')
+		 {
+		   path_src.Delete(1, 1);
+		   path_src = String(ep->GetInitDir()) + "\\" + path_src;
+		 }
+
+       if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   int i = CopyDirs(path_src, path_dst);
+	   swprintf(res, L"%d", i);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eClearDir(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+       String path = ep->GetParamToStr(L"pFile");
+
+//использован путь типа ".\file.eli" - используется текущий каталог
+	   if (path[1] == '.')
+		 {
+		   path.Delete(1, 1);
+		   path = String(ep->GetInitDir()) + "\\" + path;
+		 }
+
+	   DeleteAllFromDir(ep->GetParamToStr(L"pDir"));
+       swprintf(res, L"%d", 1);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+__declspec(dllexport) void __stdcall eReadBinFile(void *p)
+{
+  ELI_INTERFACE *ep = (ELI_INTERFACE*)p;
+
+  wchar_t res[3];
+
+  try
+	 {
+	   //int i = DeleteFile(ep->GetParamToStr(L"pFile"));
+	   swprintf(res, L"%d", 1);
+	 }
+  catch (Exception &e)
+	 {
+	   swprintf(res, L"%d", -1);
+	 }
+
+  ep->SetFunctionResult(ep->GetCurrentFuncName(), res);
+}
+//-------------------------------------------------------------------------------
+
+}
+
+int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
+{
+	return 1;
+}
+

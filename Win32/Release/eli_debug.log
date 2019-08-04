@@ -1,0 +1,33 @@
+[26.07.2019 14:53:30] : scDebugIntoFile: [start]
+[26.07.2019 14:53:30] : RunFunc: 0
+[26.07.2019 14:53:30] : RunFunc: [return OK]
+[26.07.2019 14:53:30] : ParseFuncsInExp: 0
+[26.07.2019 14:53:30] : ParseFuncsInExp: [return OK]
+[26.07.2019 14:53:30] : -------------------------------------------------: 
+[26.07.2019 14:53:30] : CompileLine: if (!$x)@14
+[26.07.2019 14:53:30] : -------------------------------------------------: 
+[26.07.2019 14:53:30] : ParseConstStrings: [start]
+[26.07.2019 14:53:30] : ParseConstStrings: if (!$x)@14
+[26.07.2019 14:53:30] : ParseConstStrings: [end]
+[26.07.2019 14:53:30] : RemoveSpaces: [start]
+[26.07.2019 14:53:30] : RemoveSpaces: if (!$x)@14
+[26.07.2019 14:53:30] : RemoveSpaces: if(!$x)@14
+[26.07.2019 14:53:30] : RemoveSpaces: [end]
+[26.07.2019 14:53:30] : ExpIf: [start]
+[26.07.2019 14:53:30] : ExpIf: if(!$x)@14
+[26.07.2019 14:53:30] : ExpTrue: [start]
+[26.07.2019 14:53:30] : ExpTrue: !$x
+[26.07.2019 14:53:30] : CalcExpNum: [start]
+[26.07.2019 14:53:30] : CalcExpNum: $x
+[26.07.2019 14:53:30] : ParseVarInExp: [start]
+[26.07.2019 14:53:30] : ParseVarInExp: =$x
+[26.07.2019 14:53:30] : ParseVarInExp: =-1
+[26.07.2019 14:53:30] : ParseVarInExp: [return OK]
+[26.07.2019 14:53:30] : IsNumExpression: [start]
+[26.07.2019 14:53:30] : IsNumExpression: =-1
+[26.07.2019 14:53:30] : IsNumExpression: [OK]
+[26.07.2019 14:53:30] : IsSimple: [start]
+[26.07.2019 14:53:30] : IsSimple: =-1
+[26.07.2019 14:53:30] : CheckExprType: [start]
+[26.07.2019 14:53:30] : CheckExprType: [end]
+[26.07.2019 14:53:30] : CalcExpNum: [end]
