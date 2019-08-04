@@ -1,0 +1,3 @@
+# ELI
+Line by line interpreter with C-like syntax, class support and importing functionality from .dll libraries.
+Uses virtual interface to integration in apps, which compiled with MinGW, bcc32c/bcc32x (Embarcadero C++ compiler) and MSVC++.
