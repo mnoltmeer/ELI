@@ -30,9 +30,9 @@ This file is part of Extern Logic Interpreter.
 #define BUILD_DLL
 
 /*! somefunc.h copyright 2015-2018 Maxim Noltmeer (m.noltmeer@gmail.com) */
-#include "D:\MyFunc.h"
+#include "..\work-functions\MyFunc.h"
 /*! efstring.h copyright 2016-2018 Elsa Fenrich (elsa.fenrich@gmail.com) */
-#include "..\efstring.h"
+#include "..\work-functions\efstring.h"
 #include "eli_interface.h"
 #include "scdefines.h"
 #include "resourcestack.h"

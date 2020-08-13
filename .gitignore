@@ -14,3 +14,8 @@
 *.res
 *.stat
 *.~*
+build
+FilesDLL
+release 1.03.01
+release 1.03.02
+SomeFuncDLL

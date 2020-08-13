@@ -24,7 +24,7 @@ This file is part of Extern Logic Interpreter.
 #include <fstream>
 #include <vector>
 #include <string.h>
-#include "D:\MyFunc.h"
+#include "..\work-functions\MyFunc.h"
 
 #define UINT unsigned int
 #define NUMSIZE 24
