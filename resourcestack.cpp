@@ -19,6 +19,8 @@ This file is part of Extern Logic Interpreter.
 
 #include "resourcestack.h"
 
+extern String LogPath;
+
 RESOURCESTACK::RESOURCESTACK()
 {
   next_id = Stack.size();
@@ -63,7 +65,7 @@ int RESOURCESTACK::Add(RESOURCE newres)
      }
   catch(Exception &e)
      {
-	   SaveLog("exceptions.log", e.ToString());
+	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
 
        return 0;
      }
@@ -309,7 +311,7 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                      }
 				  catch (Exception &e)
                      {
-					   SaveLog("exceptions.log", e.ToString());
+					   SaveLog(LogPath + "\\exceptions.log", e.ToString());
                        break;
                      }
 
@@ -412,7 +414,7 @@ int RESOURCESTACK::CreateResFile(const wchar_t *filepath, bool overwrite)
          }
 	  catch (Exception &e)
          {
-		   SaveLog("exceptions.log", e.ToString());
+		   SaveLog(LogPath + "\\exceptions.log", e.ToString());
          }
 
       fout.close();
@@ -444,7 +446,7 @@ int RESOURCESTACK::CreateResFile(const wchar_t *filepath, const wchar_t *res_cat
          }
 	  catch (Exception &e)
          {
-		   SaveLog("exceptions.log", e.ToString());
+		   SaveLog(LogPath + "\\exceptions.log", e.ToString());
          }
 
       fout.close();
@@ -478,7 +480,7 @@ int RESOURCESTACK::LoadResFile(const wchar_t *filepath)
              }
 		  catch (Exception &e)
              {
-               SaveLog("exceptions.log", e.ToString());
+			   SaveLog(LogPath + "\\exceptions.log", e.ToString());
              }
 
 //разбиваем на части по символу разделителю
@@ -582,7 +584,6 @@ StrList *RESOURCESTACK::ExportStrings(std::wstring cath)
   return &explist;
 }
 //---------------------------------------------------------------------------
-
 
 const wchar_t *RESOURCESTACK::StackInString()
 {

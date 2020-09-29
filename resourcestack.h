@@ -112,5 +112,4 @@ class RESOURCESTACK
         StrList *ExportStrings(std::wstring cath);
 };
 
-
 #endif // RESOURCESTACK_H_INCLUDED

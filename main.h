@@ -58,7 +58,7 @@ class ELI: public ELI_INTERFACE
     UINT TmpObjInd; //глобальный индекс нумерации временных объектов
 	std::wstring InfStack; //стек сообщений интерпретатора
 	std::wstring ScriptResult; //значение возвращаемое скриптом
-    wchar_t initdir[128];
+	wchar_t initdir[128];
 	bool use_false; //флаг, сообщающий, что нужно использовать секцию else
 	std::wstring current_func_name; //им€ текущей вызванной ф-ии
 	std::wstring current_class; //им€ текущего объ€вл€емого класса
