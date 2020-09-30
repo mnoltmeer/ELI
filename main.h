@@ -44,6 +44,9 @@ This file is part of Extern Logic Interpreter.
     #define DLL_EXPORT __declspec(dllimport)
 #endif
 
+String LogPath;
+wchar_t initdir[4096];
+
 class ELI: public ELI_INTERFACE
 {
   private:
@@ -58,7 +61,6 @@ class ELI: public ELI_INTERFACE
     UINT TmpObjInd; //глобальный индекс нумерации временных объектов
 	std::wstring InfStack; //стек сообщений интерпретатора
 	std::wstring ScriptResult; //значение возвращаемое скриптом
-	wchar_t initdir[128];
 	bool use_false; //флаг, сообщающий, что нужно использовать секцию else
 	std::wstring current_func_name; //им€ текущей вызванной ф-ии
 	std::wstring current_class; //им€ текущего объ€вл€емого класса
@@ -794,7 +796,7 @@ inline void __stdcall scSaveVarToFile(void *p)
         {
 		  std::wstring text = e_ptr->GetVarStack()->GetStrElement(var);
 
-		  SaveToFile(text.c_str(), path.c_str());
+		  SaveToFile(path.c_str(), text.c_str());
           e_ptr->SetFunctionResult(L"_SaveVarToFile", L"1");
 		}
       else

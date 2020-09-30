@@ -22,8 +22,6 @@ This file is part of Extern Logic Interpreter.
 
 #include "main.h"
 
-String LogPath;
-
 DLL_EXPORT int __stdcall GetELIInterface(ELI_INTERFACE **eInterface)
 {
   if (*eInterface)
@@ -4088,18 +4086,14 @@ void ELI::InitRes(bool init)
 {
   if (init)
 	{
-      GetCurrentDirectoryW(sizeof(initdir), initdir);
-
 	  UINT len = wcslen(initdir);
 
 //если стартовая директория - корень диска, удалим последний символ
 	  if (initdir[len - 1] == '\\' && initdir[len - 2] == ':')
 		wcscpy(initdir, std::wstring(initdir).erase(len - 1, 1).c_str());
 
-	  logfile = LogPath.c_str();
-	  logfile += L"\\translate.log";
 //создаем стек объектов
-      objStack = new RESOURCESTACK();
+	  objStack = new RESOURCESTACK();
 //создаем стек классов
       clStack = new RESOURCESTACK();
 //создаем стек процедур
@@ -4253,7 +4247,7 @@ void ELI::SaveVStState(UINT level)
 
 void ELI::WriteLog(const wchar_t *rec)
 {
-  SaveLog(logfile.c_str(), rec);
+  SaveLog(LogPath + "\\translate.log", rec);
 }
 //-------------------------------------------------------------------------------------------------
 
@@ -5065,6 +5059,12 @@ const wchar_t * __stdcall ELI::GetCurrentFuncName()
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
   LogPath = GetEnvironmentVariable("USERPROFILE") + "\\Documents";
+
+  wchar_t path[4096];
+
+  GetModuleFileName(hinst, path, sizeof(path));
+
+  wcscpy(initdir, GetDirPathFromFilePath(String(path)).c_str());
 
   return 1;
 }
