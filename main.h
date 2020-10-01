@@ -250,13 +250,15 @@ bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
 //маркирует начало и конец фрагмента в коде
 //замен€ет открывающую и закрывающую фигурную скобку на соотв метки
     std::wstring MarkFragments(std::wstring &operstr);
-    bool MakeCodeInVar(wchar_t *str, UINT index);
+	bool MakeCodeInVar(wchar_t *str, UINT index);
     bool CompileCodeFromVar(const wchar_t *name, UINT index);
 	HINSTANCE LoadExtLib(std::wstring &path);
     bool FreeExtLib(HINSTANCE hnd);
 	bool AddClassProperty(std::wstring &cl_name, std::wstring &prop_str, bool is_public, UINT index);
 	bool AddClassMethod(std::wstring &cl_name, std::wstring &method_str, bool is_public, UINT index);
-    const wchar_t *CreateTempObject(std::wstring str, std::wstring owner, UINT index);
+	const wchar_t *CreateTempObject(std::wstring str, std::wstring owner, UINT index);
+//выполн€ет защищенную трансл€цию кода, код будет выполнен даже при наличии исключений
+	bool ProtectCompile(wchar_t *str, UINT index);
 
     inline PARAMSTACK *GetParamStack(){return pStack;}
     inline FUNCSTACK *GetFuncStack(){return fStack;}
@@ -1159,6 +1161,24 @@ inline void __stdcall scStopDebug(void *p)
   e_ptr->SetDebug(false, false);
 
   e_ptr->SetFunctionResult(L"_StopDebug", L"0");
+}
+//------------------------------------------------------
+
+inline void __stdcall scSleep(void *p)
+{
+  ELI *e_ptr = (ELI*)p;
+
+  if (e_ptr->DebugEnabled())
+	e_ptr->WriteELIDebug(L"scSleep", L"[start]");
+
+  int msec = e_ptr->GetParamToInt(L"pMsec");
+
+  Sleep(msec);
+
+  e_ptr->SetFunctionResult(L"_Sleep", L"0");
+
+  if (e_ptr->DebugEnabled())
+	e_ptr->WriteELIDebug(L"scSleep", L"[end]");
 }
 //------------------------------------------------------
 

@@ -694,14 +694,13 @@ bool ELI::RunMethod(const wchar_t* objname, const wchar_t *cl_name, wchar_t *str
 }
 //-------------------------------------------------------------------------------------------------
 
-
 inline bool ELI::MakeCodeInVar(wchar_t *str, UINT index)
 {
   if (debug_eli)
-    {
-      WriteELIDebug(L"MakeCodeInVar", L"[start]");
+	{
+	  WriteELIDebug(L"MakeCodeInVar", L"[start]");
 	  WriteELIDebug(L"MakeCodeInVar", str);
-    }
+	}
 
   std::wstring vname, mark;
   UINT mrk;
@@ -715,20 +714,65 @@ inline bool ELI::MakeCodeInVar(wchar_t *str, UINT index)
   VARIABLE *var = st->Get(vname.c_str());
 
   if (!var)
-    {
-      AddInfoMsg(UNKVARNAME, ERRMSG, index);
+	{
+	  AddInfoMsg(UNKVARNAME, ERRMSG, index);
 
-      return false;
-    }
+	  return false;
+	}
 
    st->SetStrElement(var, mark);
 
   if (debug_eli)
-    WriteELIDebug(L"MakeCodeInVar", L"[end]");
+	WriteELIDebug(L"MakeCodeInVar", L"[end]");
 
   return true;
 }
 //-------------------------------------------------------------------------------------------------
+
+bool ELI::ProtectCompile(wchar_t *str, UINT index)
+{
+  if (debug_eli)
+	{
+	  WriteELIDebug(L"ProtectCompile", L"[start]");
+	  WriteELIDebug(L"ProtectCompile", str);
+	}
+
+  bool res;
+
+  try
+	 {
+	   try
+		  {
+			std::wstring mark = str;
+			mark.erase(0, 8); //уберем слово #protect
+
+			SCRIPTLINES *code = frgStack->GetFragmentCode(mark);
+
+			if (code)
+			  CompileFragment(code, index);
+			else
+			  AddInfoMsg(FRGMNTERR, ERRMSG, index);
+		  }
+	   catch (Exception &e)
+		  {
+			AddInfoMsg(FRGMNTERR, ERRMSG, index);
+
+            if (debug_eli)
+		 	  WriteELIDebug(L"ProtectCompile", String("Exception: " + e.ToString()).c_str());
+          }
+	 }
+  __finally
+	 {
+	   if (debug_eli)
+		 WriteELIDebug(L"ProtectCompile", L"[end]");
+
+	   res = true;
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------------------------
+
 
 inline bool ELI::CompileCodeFromVar(const wchar_t *name, UINT index)
 {
@@ -741,8 +785,8 @@ inline bool ELI::CompileCodeFromVar(const wchar_t *name, UINT index)
   VARIABLE *var = st->Get(name);
 
   if (!var)
-    {
-      AddInfoMsg(UNKVARNAME, ERRMSG, index);
+	{
+	  AddInfoMsg(UNKVARNAME, ERRMSG, index);
 
       return false;
 	}
@@ -2638,7 +2682,7 @@ bool ELI::CompileLine(const wchar_t *line, UINT index)
     }
   else if (_wstrincl(str, L"#run", 0)) //трансл€ци€ фрагмента из переменной
     {
-      wchar_t name[MAXNAMELEN];
+	  wchar_t name[MAXNAMELEN];
 
       _wstrncopy(str, name, 4, wcslen(str) - 4);
 
@@ -2877,10 +2921,14 @@ bool ELI::CompileLine(const wchar_t *line, UINT index)
 	  return_val.erase(0, 7);
 
       return true;
-    }
+	}
+  else if (_wstrincl(str, L"#protect", 0)) //защищенна€ трансл€ци€ кода
+	{
+	  return ProtectCompile(str, index);
+	}
   else if (_wstrincl(str, L"when", 0))
     {
-      return ExpWhen(str, index);
+	  return ExpWhen(str, index);
     }
   else if (_wstrincl(str, L"if", 0)) //условие if
     {
@@ -4062,6 +4110,7 @@ void ELI::InitCompilerFuncs()
   fStack->Add(L"_DebugIntoFile", L"", &scDebugIntoFile);
   fStack->Add(L"_DebugIntoScreen", L"", &scDebugIntoScreen);
   fStack->Add(L"_StopDebug", L"", &scStopDebug);
+  fStack->Add(L"_sleep", L"num pMsec", &scSleep);
 
 //методы объектов
   fStack->Add(L"Create", L"sym objCathegory,sym objCtorParams", &objCreate);
