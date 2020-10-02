@@ -4200,13 +4200,13 @@ void ELI::FreeRes()
   if (debug_eli)
 	WriteELIDebug(L"FreeRes", L"[start]");
 
-  vecScList.clear();     //очищаем строки скрипта
+  vecScList.clear();     		   //очищаем строки скрипта
   frgStack->ClearFragments(false); //очищаем стек фрагментов
-  vStack->ClearStack();  //очищаем стеки переменных
-  InfStack = L"";         //очищаем инфостек
-  ScriptResult = L"";     //очищаем результат
-  CstrInd = 0;           //обнуляем индекс конст. строк
-  scrtext = L"";       	 //очищаем текст скрипта
+  vStack->ClearStack();  		   //очищаем стеки переменных
+  InfStack = L"";         		   //очищаем инфостек
+  ScriptResult = L"";     		   //очищаем результат
+  CstrInd = 0;           		   //обнуляем индекс конст. строк
+  scrtext = L"";       	 		   //очищаем текст скрипта
 
   use_return = false;
   LastErr = L"<none>";
@@ -4225,9 +4225,9 @@ void ELI::SaveELIState()
   wchar_t timestamp[64];
   swprintf(timestamp, L"%s %s", DateToStr(Date()), Date().DateString());
 
-  AddToFile(path, "#################################################");
+  AddToFile(path, "#################################################\r\n");
   AddToFile(path, timestamp);
-  AddToFile(path, "###Current state of ELI stacks###");
+  AddToFile(path, "###Current state of ELI stacks###\r\n");
   AddToFile(path, "#################################################");
   AddToFile(path, "Variable stacks:\r\n");
 
@@ -4240,22 +4240,22 @@ void ELI::SaveELIState()
 	  AddToFile(vecVSt[i]->ShowInString(), path.c_str());
     }
 
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Parameter stack:");
   AddToFile(path, pStack->ShowInString());
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Object stack:");
   AddToFile(path, objStack->StackInString());
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Function stack:");
   AddToFile(path, fStack->ShowInString());
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Class stack:");
   AddToFile(path, clStack->StackInString());
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Procedure stack:");
   AddToFile(path, procStack->StackInString());
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, "Precompiled fragments stack:");
   AddToFile(path, frgStack->ShowInString());
   AddToFile(path, "####################END########################\r\n");
@@ -4271,8 +4271,9 @@ void ELI::SaveVStState(UINT level)
   wchar_t timestamp[64];
   swprintf(timestamp, L"%s %s", DateToStr(Date()), TimeToStr(Time()));
 
-  AddToFile(path, "#################################################");
+  AddToFile(path, "################################################# ");
   AddToFile(path, timestamp);
+  AddToFile(path, "\r\n");
 
   if ((level == 0) && vStack)
 	{
