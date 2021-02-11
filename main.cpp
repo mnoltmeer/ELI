@@ -22,6 +22,8 @@ This file is part of Extern Logic Interpreter.
 
 #include "main.h"
 
+extern String UsedAppLogDir;
+
 DLL_EXPORT int __stdcall GetELIInterface(ELI_INTERFACE **eInterface)
 {
   if (*eInterface)
@@ -33,7 +35,7 @@ DLL_EXPORT int __stdcall GetELIInterface(ELI_INTERFACE **eInterface)
 	 }
   catch (Exception &e)
 	 {
-	   SaveLog("exceptions.log", "*eInterface = new ELI() :" + e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", "*eInterface = new ELI() :" + e.ToString());
 	 }
 
   return 1;
@@ -292,7 +294,7 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
     {
       AddInfoMsg(SCEXIT, INFMSG, index);
 
-      return false;
+	  return false;
     }
   else if (_wstrincl(fname.c_str(), L"throw", 1))
     {
@@ -303,7 +305,7 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
 
   if (debug_eli)
     {
-      WriteELIDebug(L"RunFunc", result);
+	  WriteELIDebug(L"RunFunc", result);
       WriteELIDebug(L"RunFunc", L"[return OK]");
     }
 
@@ -1450,7 +1452,7 @@ bool ELI::ParseFuncsInExp(wchar_t *expr, UINT index)
   if (debug_eli)
     {
       WriteELIDebug(L"ParseFuncsInExp", L"[start]");
-      WriteELIDebug(L"ParseFuncsinExp", expr);
+      WriteELIDebug(L"ParseFuncsInExp", expr);
     }
 
   std::wstring operstr = expr;
@@ -2199,7 +2201,7 @@ bool ELI::CompileLine(const wchar_t *line, UINT index)
             {
               AddInfoMsg(INITERR, ERRMSG, index);
 
-              return false;
+			  return false;
             }
 
 //если после "=" идет num/sym - это объ€вление переменной
@@ -3036,7 +3038,7 @@ bool ELI::CompileScriptLines()
             WriteELIDebug(L"CompileScriptLines", L"return FAIL");
 
           return false;
-        }
+		}
     }
 
   if (debug_eli)
@@ -3052,7 +3054,7 @@ bool ELI::CompileFragment(SCRIPTLINES *vecFragment, UINT index)
     WriteELIDebug(L"CompileFragment", L"[start]");
 
   for (UINT ind = 0; ind < vecFragment->size(); ind++)
-    {
+	{
       if (!CompileLine(vecFragment->at(ind).c_str(), index))
         return false;
     }
@@ -4297,17 +4299,16 @@ void ELI::SaveVStState(UINT level)
 
 void ELI::WriteLog(const wchar_t *rec)
 {
-  SaveLog(LogPath + "\\translate.log", rec);
+  SaveLogToUserFolder("translate.log", "ELI", rec);
 }
 //-------------------------------------------------------------------------------------------------
 
 void ELI::WriteELIDebug(const wchar_t *event, const wchar_t *rec)
 {
-  String eli_log = LogPath + "\\eli_debug.log";
   String str = String(event) + ": " + String(rec);
 
   if (debug_in_file)
-	SaveLog(eli_log.c_str(), str.c_str());
+	SaveLogToUserFolder("ELI_debug.log", "ELI", str.c_str());
   else
     wprintf(L"%s\n", str.c_str());
 }
@@ -4748,8 +4749,8 @@ const wchar_t * __stdcall ELI::RunScript(const wchar_t *imptext, const wchar_t *
     {
       AddInfoMsg(SCNOEND);
 
-      if (!use_return)
-        ScriptResult = ERROUT;
+	  if (!use_return)
+		ScriptResult = ERROUT;
     }
 
   AddInfoMsg(COMPILED);
@@ -4970,8 +4971,8 @@ void __stdcall ELI::AddFunction(const wchar_t *name, const wchar_t *params, func
   catch (Exception &e)
      {
 	   String msg = "AddFunction(" + String(name) + ", " + String(params) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
 	 }
 }
 //-------------------------------------------------------------------------------------------------
@@ -4985,8 +4986,8 @@ void __stdcall ELI::DeleteFunction(const wchar_t *name)
   catch (Exception &e)
      {
 	   String msg = "DeleteFunction(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 }
 //-------------------------------------------------------------------------------------------------
@@ -5000,8 +5001,8 @@ void __stdcall ELI::CallFunction(const wchar_t *name)
   catch (Exception &e)
 	 {
 	   String msg = "CallFunction(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 }
 //-------------------------------------------------------------------------------------------------
@@ -5017,8 +5018,8 @@ wchar_t * __stdcall ELI::GetFunctionResult(const wchar_t *name)
   catch (Exception &e)
      {
 	   String msg = "GetFunctionResult(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 
   return res;
@@ -5034,8 +5035,8 @@ void __stdcall ELI::SetFunctionResult(const wchar_t *name, const wchar_t* result
   catch (Exception &e)
      {
 	   String msg = "SetFunctionResult(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 }
 //-------------------------------------------------------------------------------------------------
@@ -5049,8 +5050,8 @@ void __stdcall ELI::SetParam(const wchar_t *name, const wchar_t *new_val)
   catch (Exception &e)
      {
 	   String msg = "SetParam(" + String(name) + String(new_val) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 }
 //-------------------------------------------------------------------------------------------------
@@ -5067,8 +5068,8 @@ int __stdcall ELI::GetParamToInt(const wchar_t *name)
      {
 	   res = 0;
 	   String msg = "GetParamToInt(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 
   return res;
@@ -5086,8 +5087,8 @@ float __stdcall ELI::GetParamToFloat(const wchar_t *name)
   catch (Exception &e)
      {
 	   String msg = "GetParamToFloat(" + String(name) + ")";
-	   SaveLog(LogPath + "\\exceptions.log", msg);
-	   SaveLog(LogPath + "\\exceptions.log", e.ToString());
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
      }
 
   return res;
@@ -5108,7 +5109,12 @@ const wchar_t * __stdcall ELI::GetCurrentFuncName()
 
 int WINAPI DllEntryPoint(HINSTANCE hinst, unsigned long reason, void* lpReserved)
 {
-  LogPath = GetEnvironmentVariable("USERPROFILE") + "\\Documents";
+  LogPath = GetEnvironmentVariable("USERPROFILE") + "\\Documents\\ELI";
+
+  if (!DirectoryExists(LogPath))
+	CreateDir(LogPath);
+
+  UsedAppLogDir = "ELI";
 
   wchar_t path[4096];
 
