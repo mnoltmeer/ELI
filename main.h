@@ -1,5 +1,5 @@
 /*!
-Copyright 2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2017-2019, 2021 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -56,7 +56,8 @@ class ELI: public ELI_INTERFACE
 	bool use_return;
 	std::wstring logfile;
 	std::wstring scrtext; //текст скрипта, с которым будет работать dll
-    UINT CstrInd; //глобальный индекс присваиваемый конст. строкам
+	UINT CstrInd; //глобальный индекс присваиваемый конст. строкам
+	UINT CnumInd; //глобальний індекс, що призначається числовим константам
 	UINT FrgmntNum; //глобальный индекс нумерации фрагментов кода
     UINT TmpObjInd; //глобальный индекс нумерации временных объектов
 	std::wstring InfStack; //стек сообщений интерпретатора
@@ -65,6 +66,13 @@ class ELI: public ELI_INTERFACE
 	std::wstring current_func_name; //имя текущей вызванной ф-ии
 	std::wstring current_class; //имя текущего объявляемого класса
 	std::wstring return_val; //значение возвращаемое методом
+	bool trigger_check; //флаг, який повідомляє, що відбувається перевірка тригеру
+						//тож не треба писати повідомлення в лог
+	bool settings_change; //флаг що визначає момент, коли код вносить зміни
+						  //у налаштування інтерпретатора
+
+    SETTINGS InterpreterSettings; //налаштування інтерпретатора
+
     SCRIPTLINES vecScList; //вектор для хранения строк скрипта
     FRAGMENTSTACK *frgStack;
 	std::vector<VARSTACK*> vecVSt; //вектор указателей на стеки переменных
@@ -72,6 +80,7 @@ class ELI: public ELI_INTERFACE
 	std::vector<HINSTANCE> vecLibs; //вектор для дескрипторов внешних библиотек
 	std::vector<EXTFUNC> vecExtFuncs; //вектор со списком импортированных ф-й
 	std::vector<REFERENCE> vecRefs; //вектор со списком ссылок
+	std::vector<TRIGGER> vecTriggers; //вектор з переліком доступних тригерів
 
 ///стеки для рантайм переменных скрипта
     VARSTACK *vStack; //стек переменных для скрипта
@@ -86,98 +95,109 @@ class ELI: public ELI_INTERFACE
 
 ///служебные функции
 //начальная инициализация всех ресурсов интерпретатора
-void InitRes(bool init);
+	void InitRes(bool init);
 //ф-я инициализирующая встроенные ф-ии интерпретатора
-void InitCompilerFuncs();
+	void InitCompilerFuncs();
 //подготавливает интерпретатор к запуску нового скрипта
-void FreeRes();
-//очищает стек фрагментов кода, оставляя только те фрагменты
-//которые содержат код процедур
-//void ClearFragments(bool all);
+	void FreeRes();
 //компилирует фрагмент кода (тело цикла или условия)
-bool CompileFragment(SCRIPTLINES *vecFragment, UINT index);
-//по метке находит фрагмент в стеке и возвращает указатель на строки кода
-//SCRIPTLINES *GetFragmentCode(const wchar_t *mark);
+	bool CompileFragment(SCRIPTLINES *vecFragment, UINT index);
 //проверяет содержится ли такое значение в стеке
-bool IsStackContent(std::vector<std::wstring> *strStack, std::wstring val);
-bool IsStackContent(std::vector<float> *numstack, float val);
+	bool IsStackContent(std::vector<std::wstring> *strStack, std::wstring val);
+	bool IsStackContent(std::vector<float> *numstack, float val);
 //проверяет является ли выражение простым
 //т.е. содержит ли математические операции одинакового приоритета
-bool IsSimple(wchar_t *expr);
+	bool IsSimple(wchar_t *expr);
 //проверяет, что строка содержит только цифры, точку и знаки операций
-bool IsNumExpression(const wchar_t *expr);
+	bool IsNumExpression(const wchar_t *expr);
 //находит в строке символ операции и возвращает его позицию либо -1
-UINT OperSymbPos(std::wstring str);
+	UINT OperSymbPos(std::wstring str);
 //убирает скобки из выражения
 //приводит его к простому списку арифметических операций (сложное выражение)
-const wchar_t *RemoveScopes(wchar_t *in_exp, UINT index);
+	const wchar_t *RemoveScopes(wchar_t *in_exp, UINT index);
 //приводит сложное выражение к простому
-const wchar_t *SetExpToSimple(wchar_t *in_exp, UINT index);
+	const wchar_t *SetExpToSimple(wchar_t *in_exp, UINT index);
 //проверяет на корректность имя переменной
 //недопустимы символ _ знаки препинания и цифры
-bool IsCorrectVarName(const wchar_t *varname);
+	bool IsCorrectVarName(const wchar_t *varname);
 //вычисляет тип выражения, возвращает 0, если произошла ошибка
 //index - индекс строки в скрипте
-UINT CheckExprType(const wchar_t *expr, UINT index);
+	UINT CheckExprType(const wchar_t *expr, UINT index);
 //парсит строку с выражением, заменяет имена переменных на их значения
-bool ParseVarInExp(wchar_t *expr, UINT index);
+	bool ParseVarInExp(wchar_t *expr, UINT index);
 //парсит строку с выражением, заменяет вызовы ф-й их возвращаемыми значениями
-bool ParseFuncsInExp(wchar_t *expr, UINT index);
+	bool ParseFuncsInExp(wchar_t *expr, UINT index);
 //парсит строку с выражнеием, заменяет обращения к свойствам или методам объектов на возвр. значения
-bool ParseObjectsInExp(wchar_t *expr, UINT index);
+	bool ParseObjectsInExp(wchar_t *expr, UINT index);
 //парсит строку на наличие ссылок
-bool ParseRefsInExp(wchar_t *expr, UINT index);
+	bool ParseRefsInExp(wchar_t *expr, UINT index);
 //парсит строку, разворачивая вложенные объекты-свойства, приводит строку к виду &obj.property
-bool ParseIncObjects(wchar_t *expr, UINT index);
+	bool ParseIncObjects(wchar_t *expr, UINT index);
 //функции производящие расчет выражения
 //выполняют операции с его частями и сводит к одному значению
-float *CalcExpNum(wchar_t *expr, UINT index);
-const wchar_t *CalcExpStr(wchar_t *expr, UINT index);
+	float *CalcExpNum(wchar_t *expr, UINT index);
+	const wchar_t *CalcExpStr(wchar_t *expr, UINT index);
 //парсит текст скрипта на предмет константных строк (типа 'константная строка')
 //загоняет их в стек как переменные и меняет на соотв. имена переменных
-const wchar_t *ParseConstStrings(wchar_t *text);
+	const wchar_t *ParseConstStrings(wchar_t *text);
+//парсить текст скрипту на наявність числових констант
+//вносить їх у стек як змінні та замінює у тексті на імена змінних
+	const wchar_t *ParseConstNumbers(wchar_t *text);
 //убирает пробелы
-const wchar_t *RemoveSpaces(const wchar_t *text);
+	const wchar_t *RemoveSpaces(const wchar_t *text);
+//прибирає переноси рядків
+	std::wstring RemoveEndlines(std::wstring text);
 //заменяет директивы #include в исходном тексте скрипта на содержимое инклуд-файлов
-SCRIPTLINES GetInclude(const wchar_t *str);
+	SCRIPTLINES GetInclude(const wchar_t *str);
 //разбивает скрипт на строки и заполняет вектор
 //разделителем строк является ENDLN
-void PrepareScript();
+	void PrepareScript();
 //проверяет на корректность и компилирует каждую строку скрипта
 //возвращает 1, если скрипт скомпилирован, 0 - если произошла ошибка
-bool CompileScriptLines();
+	bool CompileScriptLines();
 //возвращает результат сравнения левой и правой части выражения exp
 //1 - выражение истинно
 //0 - ложно
 //-1 - произошла ошибка
-int ExpTrue(std::wstring exp, UINT index);
+	int ExpTrue(std::wstring exp, UINT index);
 
 ///функции для выполнения команд содержащихся в скрипте
 //выполняет инициализацию переменной
 //st - указатель на стек, в котором будет создана переменная
 //defvalue - строка со значением по умолчанию
 //index - индекс строки в скрипте
-bool VarInit(wchar_t *name, UINT type, wchar_t* defvalue, UINT index);
+	bool VarInit(wchar_t *name, UINT type, wchar_t* defvalue, UINT index);
 //производят расчет условия if-then-else и циклов
 //возвращают ложь, если произошла ошибка
-bool ExpIf(wchar_t *line, UINT index);    //if (lval == rval){};
-bool ExpElseIf(wchar_t *line, UINT index);    //else if (lval == rval){};
-bool ExpElse(wchar_t *line, UINT index);
-bool ExpFor(wchar_t *line, UINT index);   //for ($var, <= 10, +1) for (0, <= 10, +1) {};
-bool ExpCount(wchar_t *line, UINT index); //count(10) {};
-bool ExpWhile(wchar_t *line, UINT index); //while(lval != rval) {};
-bool ExpSelect(wchar_t *line, UINT index);//select ($var){when 10 then {_return(1)}}
-bool ExpWhen(wchar_t *line, UINT index);
+	bool ExpIf(wchar_t *line, UINT index); //if (lval == rval){};
+	bool ExpElseIf(wchar_t *line, UINT index); //else if (lval == rval){};
+	bool ExpElse(wchar_t *line, UINT index);
+	bool ExpFor(wchar_t *line, UINT index); //for ($var, <= 10, +1) for (0, <= 10, +1) {};
+	bool ExpCount(wchar_t *line, UINT index); //count(10) {};
+	bool ExpWhile(wchar_t *line, UINT index); //while(lval != rval) {};
+	bool ExpSelect(wchar_t *line, UINT index); //select ($var){when 10 then {_return(1)}}
+	bool ExpWhen(wchar_t *line, UINT index);
 
-bool RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index);
-bool CreateProcedure(wchar_t *str_with_proc, UINT index);
-bool DropProcedure(const wchar_t *proc_name);
-bool RunProcedure(const wchar_t *name, const wchar_t *params, UINT index);
-bool WorkWithObject(wchar_t *str_with_obj, wchar_t *result, UINT index);
-bool RunMethod(const wchar_t *objname, const wchar_t *cl_name, wchar_t *str_with_method, UINT index);
-bool AddRef(const wchar_t *name, const wchar_t *val);
-REFERENCE *GetRef(const wchar_t *name);
-bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
+	bool RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index);
+	bool CreateProcedure(wchar_t *str_with_proc, UINT index);
+	bool DropProcedure(const wchar_t *proc_name);
+	bool RunProcedure(const wchar_t *name, const wchar_t *params, UINT index);
+	bool WorkWithObject(wchar_t *str_with_obj, wchar_t *result, UINT index);
+	bool RunMethod(const wchar_t *objname, const wchar_t *cl_name, wchar_t *str_with_method, UINT index);
+	bool AddRef(const wchar_t *name, const wchar_t *val);
+	REFERENCE *GetRef(const wchar_t *name);
+	bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
+//выполняет защищенную трансляцию кода, код будет выполнен даже при наличии исключений
+	bool ProtectCompile(wchar_t *str, UINT index);
+//робота з тригерами
+	bool CreateTrigger(wchar_t *str, UINT index);
+    bool RemoveTrigger(wchar_t *str, UINT index);
+	bool CheckTrigger(TRIGGER *trigger);
+	void RunTrigger(TRIGGER *trigger);
+	bool TriggerExists(TRIGGER *trigger);
+	void CheckTriggers();
+	bool ProcessDirective(wchar_t *str, UINT index);
+	SCRIPTLINES ChangeSettings(wchar_t *str);
 
   public:
     ELI();
@@ -210,15 +230,20 @@ bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
 	virtual const wchar_t * __stdcall ShowClassStack();
 	virtual const wchar_t * __stdcall ShowProcStack();
 	virtual const wchar_t * __stdcall ShowInfoMessages();
-	virtual const wchar_t * __stdcall RunScript(const wchar_t *imptext, const wchar_t *parameter, bool log);
-	virtual const wchar_t * __stdcall RunScriptFromFile(const wchar_t *filepath, const wchar_t *parameter, bool log);
+	virtual const wchar_t * __stdcall RunScript(const wchar_t *imptext,
+												const wchar_t *parameter,
+												bool log);
+	virtual const wchar_t * __stdcall RunScriptFromFile(const wchar_t *filepath,
+														const wchar_t *parameter,
+														bool log);
 	virtual const wchar_t * __stdcall ShowFuncStack();
 	virtual const wchar_t * __stdcall ShowParamStack();
 	virtual const wchar_t * __stdcall ShowFragmentStack();
 	virtual const wchar_t * __stdcall GetCurrentFuncName();
 	virtual void __stdcall SetDebug(bool enable_dbg, bool in_file);
-	virtual bool __stdcall DebugEnabled(){return debug_eli;}
-	virtual const wchar_t* __stdcall GetInitDir(){return initdir;}
+	virtual bool __stdcall DebugEnabled();
+	virtual const wchar_t* __stdcall GetInitDir();
+	virtual void __stdcall AddToLog(const wchar_t *msg);
 
 	std::wstring LastErr;
     bool debug_in_file;
@@ -249,7 +274,9 @@ bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
     const wchar_t *GetObjCathegory(const wchar_t *obj_name);
 //маркирует начало и конец фрагмента в коде
 //заменяет открывающую и закрывающую фигурную скобку на соотв метки
-    std::wstring MarkFragments(std::wstring &operstr);
+	std::wstring MarkFragments(std::wstring &operstr);
+	void SearchAndMarkGlobalFragments();
+	void MarkGlobalFragment(FRAGMENTCODE *frg);
 	bool MakeCodeInVar(wchar_t *str, UINT index);
     bool CompileCodeFromVar(const wchar_t *name, UINT index);
 	HINSTANCE LoadExtLib(std::wstring &path);
@@ -257,8 +284,6 @@ bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
 	bool AddClassProperty(std::wstring &cl_name, std::wstring &prop_str, bool is_public, UINT index);
 	bool AddClassMethod(std::wstring &cl_name, std::wstring &method_str, bool is_public, UINT index);
 	const wchar_t *CreateTempObject(std::wstring str, std::wstring owner, UINT index);
-//выполняет защищенную трансляцию кода, код будет выполнен даже при наличии исключений
-	bool ProtectCompile(wchar_t *str, UINT index);
 
     inline PARAMSTACK *GetParamStack(){return pStack;}
     inline FUNCSTACK *GetFuncStack(){return fStack;}
@@ -273,12 +298,12 @@ bool ImportParentClass(std::wstring child, std::wstring parent, bool type);
 	inline void ReturnEnabled(bool res){use_return = res;}
 	inline void SetInitDir(const wchar_t *path){wcscpy(initdir, path);}
 };
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 ///встроенные ф-ии для скриптового языка
 inline void __stdcall scRandom(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRandom", L"[start]");
@@ -297,11 +322,11 @@ inline void __stdcall scRandom(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRandom", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scRound(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRound", L"[start]");
@@ -324,11 +349,11 @@ inline void __stdcall scRound(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRound", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scInt(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scInt", L"[start]");
@@ -341,11 +366,11 @@ inline void __stdcall scInt(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scInt", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scStrLen(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStrLen", L"[start]");
@@ -360,11 +385,11 @@ inline void __stdcall scStrLen(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStrLen", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scStrEq(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStrEq", L"[start]");
@@ -378,11 +403,11 @@ inline void __stdcall scStrEq(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStrEq", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scIStrEq(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scIStrEq", L"[start]");
@@ -396,11 +421,11 @@ inline void __stdcall scIStrEq(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scIStrEq", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSubStr(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSubStr", L"[start]");
@@ -417,11 +442,11 @@ inline void __stdcall scSubStr(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSubStr", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scReturn(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scReturn", L"[start]");
@@ -433,11 +458,11 @@ inline void __stdcall scReturn(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scReturn", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scThrow(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scThrow", L"[start]");
@@ -448,11 +473,11 @@ inline void __stdcall scThrow(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scThrow", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scFree(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scFree", L"[start]");
@@ -473,11 +498,11 @@ inline void __stdcall scFree(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scFree", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scLoadObjStack(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLoadObjStack", L"[start]");
@@ -503,11 +528,11 @@ inline void __stdcall scLoadObjStack(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLoadObjStack", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveObjStack(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
    e_ptr->WriteELIDebug(L"scSaveObjStack", L"[start]");
@@ -530,11 +555,11 @@ inline void __stdcall scSaveObjStack(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveObjStack", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveObjects(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
    e_ptr->WriteELIDebug(L"scSaveObjects", L"[start]");
@@ -558,11 +583,11 @@ inline void __stdcall scSaveObjects(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveObjects", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scCompactObjStack(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scCompactObjStack", L"[start]");
@@ -572,11 +597,11 @@ inline void __stdcall scCompactObjStack(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scCompactObjStack", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scClearObjStack(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scClearObjStack", L"[start]");
@@ -588,11 +613,11 @@ inline void __stdcall scClearObjStack(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scClearObjStack", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scRemoveObjects(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRemoveObjects", L"[start]");
@@ -609,11 +634,11 @@ inline void __stdcall scRemoveObjects(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRemoveObjects", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scRun(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRun", L"[start]");
@@ -650,11 +675,11 @@ inline void __stdcall scRun(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scRun", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scGetParamAsNum(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetParamAsNum", L"[start]");
@@ -677,11 +702,11 @@ inline void __stdcall scGetParamAsNum(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetParamAsNum", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scGetParamAsStr(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetParamAsStr", L"[start]");
@@ -702,11 +727,11 @@ inline void __stdcall scGetParamAsStr(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetParamAsStr", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSetParam(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSetParam", L"[start]");
@@ -724,11 +749,11 @@ inline void __stdcall scSetParam(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSetParam", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scLoadFileToVar(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLoadFileToVar", L"[start]");
@@ -771,11 +796,11 @@ inline void __stdcall scLoadFileToVar(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLoadFileToVar", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveVarToFile(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveVarToFile", L"[start]");
@@ -814,11 +839,11 @@ inline void __stdcall scSaveVarToFile(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveVarToFile", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveFragmentToFile(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveFragmentToFile", L"[start]");
@@ -879,11 +904,11 @@ inline void __stdcall scSaveFragmentToFile(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveFragmentToFile", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scGetConfig(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetConfig", L"[start]");
@@ -908,11 +933,11 @@ inline void __stdcall scGetConfig(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scGetConfig", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveState(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveState", L"[start]");
@@ -923,11 +948,11 @@ inline void __stdcall scSaveState(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveState", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSaveVarStack(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveVarStack", L"[start]");
@@ -940,11 +965,11 @@ inline void __stdcall scSaveVarStack(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSaveVarStack", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scWriteOut(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scWriteOut", L"[start]");
@@ -978,11 +1003,11 @@ inline void __stdcall scWriteOut(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scWriteOut", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scReadIn(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scReadIn", L"[start]");
@@ -1004,11 +1029,11 @@ inline void __stdcall scReadIn(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scReadIn", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSystem(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSystem", L"[start]");
@@ -1021,11 +1046,11 @@ inline void __stdcall scSystem(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scSystem", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scLastError(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLastError", L"[start]");
@@ -1035,11 +1060,11 @@ inline void __stdcall scLastError(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scLastError", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scConnectLib(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scConnectLib", L"[start]");
@@ -1060,11 +1085,11 @@ inline void __stdcall scConnectLib(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scConnectLib", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scFreeLib(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scFreeLib", L"[start]");
@@ -1084,11 +1109,11 @@ inline void __stdcall scFreeLib(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scFreeLib", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scImportFunc(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scImportFunc", L"[start]");
@@ -1123,11 +1148,11 @@ inline void __stdcall scImportFunc(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scImportFunc", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scDebugIntoFile(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   e_ptr->SetDebug(true, true);
 
@@ -1136,11 +1161,11 @@ inline void __stdcall scDebugIntoFile(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scDebugIntoFile", L"[start]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scDebugIntoScreen(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   e_ptr->SetDebug(true, false);
 
@@ -1149,11 +1174,11 @@ inline void __stdcall scDebugIntoScreen(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scDebugIntoScreen", L"[start]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scStopDebug(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStopDebug", L"[start]");
@@ -1162,11 +1187,11 @@ inline void __stdcall scStopDebug(void *p)
 
   e_ptr->SetFunctionResult(L"_StopDebug", L"0");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall scSleep(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
 	e_ptr->WriteELIDebug(L"scSleep", L"[start]");
@@ -1180,12 +1205,12 @@ inline void __stdcall scSleep(void *p)
   if (e_ptr->DebugEnabled())
 	e_ptr->WriteELIDebug(L"scSleep", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 ///ф-ции, отвечающие за методы объектов
 inline void __stdcall objCreate(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objCreate", L"[start]");
@@ -1250,12 +1275,12 @@ inline void __stdcall objCreate(void *p)
 		  std::wstring def_ctor = obname + OBJPROPSEPSTR + cath + L"(";
 
 		  if (ctor_args != L"")
-            def_ctor += ctor_args + L")";
-          else
-            def_ctor += L")";
+			def_ctor += ctor_args + L")";
+		  else
+			def_ctor += L")";
 
-          if (!e_ptr->CompileLine(def_ctor.c_str(), ind))
-            e_ptr->AddInfoMsg(OBJNOCTOR, WRNMSG, ind);
+		  if (!e_ptr->CompileLine(def_ctor.c_str(), ind))
+			e_ptr->AddInfoMsg(OBJNOCTOR, WRNMSG, ind);
         }
 
 //добавим служебное свойство - имя объекта
@@ -1270,24 +1295,35 @@ inline void __stdcall objCreate(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objCreate", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objDestroy(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objDestroy", L"[start]");
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
-
-  RESRECORDSET rs = e_ptr->GetObjStack()->Get(obj_id, std::wstring(e_ptr->GetParamToStr(P_OBJNAME)));
+  std::wstring name = e_ptr->GetParamToStr(P_OBJNAME);
+  RESRECORDSET rs = e_ptr->GetObjStack()->Get(obj_id, name);
 
   if (rs.size() > 0)
-    {
+	{
       for (UINT i = 0; i < rs.size(); i++)
         {
-          rs[i]->KeepInStack = NO;
+		  rs[i]->KeepInStack = NO;
+
+//виконаємо деструктор якщо він є
+		  if (rs[i]->PropertyID == DTORSYMB + rs[i]->ObjectCathegory)
+			{
+			  std::wstring def_dtor = rs[i]->ObjectID +
+									  OBJPROPSEPSTR +
+									  rs[i]->PropertyID + L"()";
+
+			  e_ptr->CompileLine(def_dtor.c_str(), ind);
+            }
+
 //отыщем и пометим на удаление все объекты-свойства удаляемого объекта
 		  if (rs[i]->Value.find(OBJSYM) != std::wstring::npos)
             {
@@ -1313,11 +1349,11 @@ inline void __stdcall objDestroy(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objDestroy", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objAdd(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objAdd", L"[start]");
@@ -1368,11 +1404,11 @@ inline void __stdcall objAdd(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objAdd", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objRemove(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objRemove", L"[start]");
@@ -1400,11 +1436,11 @@ inline void __stdcall objRemove(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objRemove", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objExist(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExist", L"[start]");
@@ -1417,11 +1453,11 @@ inline void __stdcall objExist(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExist", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objHave(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objHave", L"[start]");
@@ -1437,11 +1473,11 @@ inline void __stdcall objHave(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objHave", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objKeep(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objKeep", L"[start]");
@@ -1465,11 +1501,11 @@ inline void __stdcall objKeep(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objKeep", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objSave(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objSave", L"[start]");
@@ -1493,11 +1529,11 @@ inline void __stdcall objSave(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objSave", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objExecute(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExecute", L"[start]");
@@ -1545,11 +1581,11 @@ inline void __stdcall objExecute(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExecute", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objShow(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objShow", L"[start]");
@@ -1572,11 +1608,11 @@ inline void __stdcall objShow(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objShow", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objExportIn(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExportIn", L"[start]");
@@ -1629,11 +1665,11 @@ inline void __stdcall objExportIn(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objExportIn", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 inline void __stdcall objGetName(void *p)
 {
-  ELI *e_ptr = (ELI*)p;
+  ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objGetName", L"[start]");
@@ -1656,7 +1692,7 @@ inline void __stdcall objGetName(void *p)
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"objGetName", L"[end]");
 }
-//------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 #ifdef __cplusplus
 extern "C"

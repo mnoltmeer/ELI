@@ -94,12 +94,11 @@
         <ILINK_TranslatedLibraryPath>$(BDSLIB)\$(PLATFORM)\debug\$(LANGDIR);$(ILINK_TranslatedLibraryPath)</ILINK_TranslatedLibraryPath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1_Win32)'!=''">
-        <LinkPackageImports>rtl.bpi;vcl.bpi</LinkPackageImports>
+        <LinkPackageImports>rtl.bpi;vcl.bpi;IndyProtocols.bpi;IndyCore.bpi;IndySystem.bpi</LinkPackageImports>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
         <VerInfo_Locale>1033</VerInfo_Locale>
         <Manifest_File>(None)</Manifest_File>
-        <Debugger_HostApplication>D:\ELI\Win32\Debug\ELIDemoGUI.exe</Debugger_HostApplication>
-        <Debugger_CWD>D:\ELI\Win32\Debug</Debugger_CWD>
+        <Debugger_HostApplication>E:\Dropbox\GIT\ELI\Win32\Debug\ELIConsole.exe</Debugger_HostApplication>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <Defines>NDEBUG;$(Defines)</Defines>
@@ -114,8 +113,9 @@
         <LinkPackageStatics>rtl.lib;vcl.lib;IndyProtocols.lib;IndyCore.lib;IndySystem.lib</LinkPackageStatics>
         <VerInfo_Release>3</VerInfo_Release>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
-        <VerInfo_Keys>CompanyName=;FileDescription=ELI library;FileVersion=1.0.3.4;InternalName=;LegalCopyright=2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com);LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Extern Logic Interpreter;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Build>4</VerInfo_Build>
+        <VerInfo_Keys>CompanyName=;FileDescription=ELI library;FileVersion=1.0.3.5;InternalName=;LegalCopyright=2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com);LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Extern Logic Interpreter;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_Build>5</VerInfo_Build>
+        <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
     </PropertyGroup>
     <ItemGroup>
         <PCHCompile Include="ELIPCH1.h">

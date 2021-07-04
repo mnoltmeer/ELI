@@ -1,5 +1,5 @@
 /*!
-Copyright 2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2017-2019, 2021 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -55,7 +55,7 @@ struct CONDITION
 
 struct RESOURCE
 {
-  UINT Index;                   //индекс
+  UINT Index;                    //индекс
   std::wstring ObjectCathegory;  //категория объекта-владельца
   std::wstring ObjectID;         //ID объекта-владельца
   std::wstring PropertyID;       //ID свойства
@@ -70,46 +70,42 @@ typedef std::vector<RESOURCE*> (RESRECORDSET);
 
 class RESOURCESTACK
 {
-    public:
-        RESOURCESTACK();
-        RESOURCESTACK(const wchar_t *filename);
-        virtual ~RESOURCESTACK();
-
-        UINT StackSize();
-
-        const wchar_t *StackInString();
-
-//делает выборку ресурсов по заданому набору условий
-        RESRECORDSET Get(std::vector<CONDITION> *conditions);
-		RESRECORDSET Get(UINT type, std::wstring val);
-		RESRECORDSET Get(std::wstring obj_name, std::wstring prop_name);
-        std::vector<int> *Get(UINT type, const wchar_t *val);
-
-        int Add(RESOURCE newres);
-		int Delete(std::wstring ObjectCathegory,
-				   std::wstring ObjectID,
-                   std::wstring ResourceID);
-        int Delete(UINT index);
-        int CreateResFile(const wchar_t *filepath, bool overwrite);
-        int CreateResFile(const wchar_t *filepath, const wchar_t *res_cath);
-        int LoadResFile(const wchar_t *filepath);
-        void Compact();
-        void Clear();
-
-    protected:
-
-    private:
-        UINT next_id;
-        std::vector<RESOURCE> Stack;
-        UINT GetNextID();
+  private:
+	UINT next_id;
+	std::vector<RESOURCE> Stack;
+	UINT GetNextID();
 //делает выборку из стека ресурсов по определенному значению, возвращает вектор указателей
 //на те элементы, которые удовлетворяют аргументу value
-        RESRECORDSET SelectRes(CONDITION cond);
+	RESRECORDSET SelectRes(CONDITION cond);
 //уточняет выборку из ф-ии SelectRes по значению value, возвращает вектор указателей
-        RESRECORDSET Aquire(RESRECORDSET source, CONDITION cond);
+	RESRECORDSET Aquire(RESRECORDSET source, CONDITION cond);
 //выгружает в список только те ресурсы, у которых SaveInFile = 1
-        StrList *ExportStrings();
-        StrList *ExportStrings(std::wstring cath);
+	StrList *ExportStrings();
+	StrList *ExportStrings(std::wstring cath);
+
+  public:
+	RESOURCESTACK();
+	RESOURCESTACK(const wchar_t *filename);
+	virtual ~RESOURCESTACK();
+
+	UINT StackSize();
+
+	const wchar_t *StackInString();
+
+//делает выборку ресурсов по заданому набору условий
+	RESRECORDSET Get(std::vector<CONDITION> *conditions);
+	RESRECORDSET Get(UINT type, std::wstring val);
+	RESRECORDSET Get(std::wstring obj_name, std::wstring prop_name);
+	std::vector<int> *Get(UINT type, const wchar_t *val);
+
+	int Add(RESOURCE newres);
+	int Delete(std::wstring ObjectCathegory, std::wstring ObjectID, std::wstring ResourceID);
+	int Delete(UINT index);
+	int CreateResFile(const wchar_t *filepath, bool overwrite);
+	int CreateResFile(const wchar_t *filepath, const wchar_t *res_cath);
+	int LoadResFile(const wchar_t *filepath);
+	void Compact();
+	void Clear();
 };
 
 #endif // RESOURCESTACK_H_INCLUDED

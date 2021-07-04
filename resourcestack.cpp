@@ -1,5 +1,5 @@
 /*!
-Copyright 2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2017-2019, 2021 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -25,32 +25,32 @@ RESOURCESTACK::RESOURCESTACK()
 {
   next_id = Stack.size();
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESOURCESTACK::RESOURCESTACK(const wchar_t *filename)
 {
   LoadResFile(filename);
   next_id = Stack.size();
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESOURCESTACK::~RESOURCESTACK()
 {
   Stack.clear();
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 UINT RESOURCESTACK::GetNextID()
 {
   return next_id;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 UINT RESOURCESTACK::StackSize()
 {
   return Stack.size();
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 int RESOURCESTACK::Add(RESOURCE newres)
 {
@@ -72,7 +72,7 @@ int RESOURCESTACK::Add(RESOURCE newres)
 
   return 1;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 int RESOURCESTACK::Delete(UINT index)
 {
@@ -88,7 +88,7 @@ int RESOURCESTACK::Delete(UINT index)
 
   return 0;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 int RESOURCESTACK::Delete(std::wstring ObjectCathegory,
 						  std::wstring ObjectID,
@@ -140,7 +140,7 @@ int RESOURCESTACK::Delete(std::wstring ObjectCathegory,
 
   return 1;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::Get(std::vector<CONDITION> *conditions)
 {
@@ -160,7 +160,7 @@ RESRECORDSET RESOURCESTACK::Get(std::vector<CONDITION> *conditions)
 
   return result;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::Get(UINT type, std::wstring val)
 {
@@ -171,7 +171,7 @@ RESRECORDSET RESOURCESTACK::Get(UINT type, std::wstring val)
 
   return SelectRes(cond);
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 std::vector<int> *RESOURCESTACK::Get(UINT type, const wchar_t *val)
 {
@@ -190,7 +190,7 @@ std::vector<int> *RESOURCESTACK::Get(UINT type, const wchar_t *val)
 
   return &res;
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::Get(std::wstring obj_name, std::wstring prop_name)
 {
@@ -206,7 +206,7 @@ RESRECORDSET RESOURCESTACK::Get(std::wstring obj_name, std::wstring prop_name)
 
   return Get(&conds);
 }
-//-------------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
 {
@@ -231,7 +231,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
 				  for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].Index == intval)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
 				}
@@ -240,7 +240,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].ObjectCathegory == cond.value)
-                        result.push_back(&Stack.at(i));
+						result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -249,7 +249,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].ObjectID == cond.value)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -258,7 +258,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].PropertyID == cond.value)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -267,7 +267,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].Value == cond.value)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -276,7 +276,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].KeepInStack == cond.value)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -285,7 +285,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
                   for (UINT i = 0; i < Stack.size(); i++)
                     {
                       if (Stack[i].SaveInFile == cond.value)
-                        result.push_back(&Stack.at(i));
+                        result.push_back(&Stack[i]);
                     }
                   break;
                 }
@@ -293,7 +293,7 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
 
   return result;
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
 {
@@ -317,8 +317,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
 
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->Index == intval)
-                        result.push_back(source.at(i));
+                      if (source[i]->Index == intval)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -327,8 +327,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->ObjectCathegory == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->ObjectCathegory == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -337,8 +337,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->ObjectID == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->ObjectID == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -347,8 +347,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->PropertyID == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->PropertyID == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -357,8 +357,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->Value == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->Value == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -367,8 +367,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->KeepInStack == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->KeepInStack == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -377,8 +377,8 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
                 {
                   for (UINT i = 0; i < source.size(); i++)
                     {
-                      if (source.at(i)->SaveInFile == cond.value)
-                        result.push_back(source.at(i));
+                      if (source[i]->SaveInFile == cond.value)
+                        result.push_back(source[i]);
                     }
 
                   break;
@@ -387,7 +387,7 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
 
   return result;
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 int RESOURCESTACK::CreateResFile(const wchar_t *filepath, bool overwrite)
 {
@@ -422,7 +422,7 @@ int RESOURCESTACK::CreateResFile(const wchar_t *filepath, bool overwrite)
       return 1;
     }
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 int RESOURCESTACK::CreateResFile(const wchar_t *filepath, const wchar_t *res_cath)
 {
@@ -454,7 +454,7 @@ int RESOURCESTACK::CreateResFile(const wchar_t *filepath, const wchar_t *res_cat
       return 1;
 	}
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 
 int RESOURCESTACK::LoadResFile(const wchar_t *filepath)
@@ -506,7 +506,7 @@ int RESOURCESTACK::LoadResFile(const wchar_t *filepath)
       return 1;
 	}
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 void RESOURCESTACK::Compact()
 {
@@ -523,14 +523,14 @@ void RESOURCESTACK::Compact()
         ind++;
     }
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 void RESOURCESTACK::Clear()
 {
   Stack.clear();
   next_id = Stack.size();
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 StrList *RESOURCESTACK::ExportStrings()
 {
@@ -556,7 +556,7 @@ StrList *RESOURCESTACK::ExportStrings()
 
   return &explist;
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 StrList *RESOURCESTACK::ExportStrings(std::wstring cath)
 {
@@ -583,7 +583,7 @@ StrList *RESOURCESTACK::ExportStrings(std::wstring cath)
 
   return &explist;
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 const wchar_t *RESOURCESTACK::StackInString()
 {
@@ -614,4 +614,4 @@ const wchar_t *RESOURCESTACK::StackInString()
 
   return str.c_str();
 }
-//---------------------------------------------------------------------------
+//-------------------------------------------------------------------------------

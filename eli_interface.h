@@ -1,5 +1,5 @@
 /*!
-Copyright 2017-2019 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2017-2019, 2021 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -51,8 +51,12 @@ struct ELI_INTERFACE
 	virtual const wchar_t* __stdcall ShowClassStack() = 0;
 	virtual const wchar_t* __stdcall ShowProcStack() = 0;
 	virtual const wchar_t* __stdcall ShowInfoMessages() = 0;
-	virtual const wchar_t* __stdcall RunScript(const wchar_t *imptext, const wchar_t *parameter, bool log) = 0;
-	virtual const wchar_t* __stdcall RunScriptFromFile(const wchar_t *filepath, const wchar_t *parameter, bool log) = 0;
+	virtual const wchar_t* __stdcall RunScript(const wchar_t *imptext,
+											   const wchar_t *parameter,
+											   bool log) = 0;
+	virtual const wchar_t* __stdcall RunScriptFromFile(const wchar_t *filepath,
+													   const wchar_t *parameter,
+													   bool log) = 0;
 	virtual const wchar_t* __stdcall ShowFuncStack() = 0;
 	virtual const wchar_t* __stdcall ShowParamStack() = 0;
 	virtual const wchar_t* __stdcall ShowFragmentStack() = 0;
@@ -60,9 +64,10 @@ struct ELI_INTERFACE
 	virtual void __stdcall SetDebug(bool enable_dbg, bool in_file) = 0;
 	virtual bool __stdcall DebugEnabled() = 0;
 //возвращает путь к каталогу, из которого запущен ELI
-    virtual const wchar_t* __stdcall GetInitDir() = 0;
+	virtual const wchar_t* __stdcall GetInitDir() = 0;
+    virtual void __stdcall AddToLog(const wchar_t *msg) = 0;
 };
-//--------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------
 
 #if defined(BUILD_DLL)
 	#define DLL_EXPORT __declspec(dllexport)
