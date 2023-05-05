@@ -26,12 +26,16 @@ This file is part of Extern Logic Interpreter.
 ELIScript::ELIScript()
 {
   FELIPath = "ELI.dll";
+  ConnectELI();
+  FExistInstance = false;
 }
 //---------------------------------------------------------------------------
 
 ELIScript::ELIScript(const String &interpreter_path)
 {
   FELIPath = interpreter_path;
+  ConnectELI();
+  FExistInstance = false;
 }
 //---------------------------------------------------------------------------
 
@@ -166,9 +170,6 @@ bool ELIScript::Run()
 	}
   else
 	{
-	  if (!FExistInstance)
-		ConnectELI();
-
 	  if (FEIface)
 		{
           Result = FEIface->RunScript(Text.c_str(), Params.c_str(), true);
@@ -181,9 +182,6 @@ bool ELIScript::Run()
 		}
 	  else
 		res = false;
-
-      if (!FExistInstance)
-		ReleaseELI();
     }
 
   return res;
