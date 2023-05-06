@@ -25,22 +25,22 @@ This file is part of Extern Logic Interpreter.
 
 ELIScript::ELIScript()
 {
-  FELIPath = "ELI.dll";
+  Prepare();
   ConnectELI();
-  FExistInstance = false;
 }
 //---------------------------------------------------------------------------
 
 ELIScript::ELIScript(const String &interpreter_path)
 {
+  Prepare();
   FELIPath = interpreter_path;
   ConnectELI();
-  FExistInstance = false;
 }
 //---------------------------------------------------------------------------
 
 ELIScript::ELIScript(ELI_INTERFACE *instance)
 {
+  Prepare();
   FEIface = instance;
   FExistInstance = true;
 }
@@ -126,6 +126,16 @@ bool ELIScript::ReleaseELI()
 }
 //---------------------------------------------------------------------------
 
+void ELIScript::Prepare()
+{
+  FELIPath = "ELI.dll";
+  FExistInstance = false;
+  FSaveLogInFile = false;
+  FEIface = NULL;
+  FDllHandle = NULL;
+}
+//---------------------------------------------------------------------------
+
 void ELIScript::LoadFromFile(const String &file)
 {
   if (FileExists(file))
@@ -172,7 +182,7 @@ bool ELIScript::Run()
 	{
 	  if (FEIface)
 		{
-          Result = FEIface->RunScript(Text.c_str(), Params.c_str(), true);
+		  Result = FEIface->RunScript(Text.c_str(), Params.c_str(), FSaveLogInFile);
 		  Log = FEIface->ShowInfoMessages();
 
 		  if (Result != "-err-")

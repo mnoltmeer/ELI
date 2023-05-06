@@ -33,6 +33,7 @@ class ELIScript
 	GETELIINTERFACE FGetELI;
 	FREEELIINTERFACE FFreeELI;
 	bool FExistInstance;
+	bool FSaveLogInFile;
 	String FParams;
 	String FText;
     String FResult;
@@ -41,9 +42,11 @@ class ELIScript
 	bool ConnectELI();
 	bool ReleaseELI();
 
+    void Prepare();
+
   public:
+    ELIScript();
 	ELIScript(const String &interpreter_path);
-	ELIScript();
 	ELIScript(ELI_INTERFACE *instance); //ініціалізація з наявним і налаштованим інтерператором
 	inline virtual ~ELIScript(){if (!FExistInstance) ReleaseELI();}
 
@@ -57,6 +60,7 @@ class ELIScript
 	__property String Result = {read = FResult, write = FResult};
 	__property String Log = {read = FLog, write = FLog};
 	__property ELI_INTERFACE *Interpreter = {read = FEIface};
+	__property bool SaveLogInFile = {read = FSaveLogInFile, write = FSaveLogInFile};
 };
 //---------------------------------------------------------------------------
 #endif
