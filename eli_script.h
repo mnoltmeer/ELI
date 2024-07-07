@@ -1,5 +1,5 @@
 /*!
-Copyright 2023 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2023-2024 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -38,6 +38,7 @@ class ELIScript
 	String FText;
     String FResult;
 	String FLog;
+	bool FInit; //прапорець успішної ініціалізації
 
 	bool ConnectELI();
 	bool ReleaseELI();
@@ -61,6 +62,7 @@ class ELIScript
 	__property String Log = {read = FLog, write = FLog};
 	__property ELI_INTERFACE *Interpreter = {read = FEIface};
 	__property bool SaveLogInFile = {read = FSaveLogInFile, write = FSaveLogInFile};
+    __property bool Initialised = {read = FInit, write = FInit};
 };
 //---------------------------------------------------------------------------
 #endif

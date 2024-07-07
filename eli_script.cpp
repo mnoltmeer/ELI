@@ -1,5 +1,5 @@
 /*!
-Copyright 2023 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2023-2024 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -26,7 +26,7 @@ This file is part of Extern Logic Interpreter.
 ELIScript::ELIScript()
 {
   Prepare();
-  ConnectELI();
+  FInit = ConnectELI();
 }
 //---------------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ ELIScript::ELIScript(const String &interpreter_path)
 {
   Prepare();
   FELIPath = interpreter_path;
-  ConnectELI();
+  FInit = ConnectELI();
 }
 //---------------------------------------------------------------------------
 
@@ -43,6 +43,7 @@ ELIScript::ELIScript(ELI_INTERFACE *instance)
   Prepare();
   FEIface = instance;
   FExistInstance = true;
+  FInit = true;
 }
 //---------------------------------------------------------------------------
 
