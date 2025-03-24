@@ -128,6 +128,8 @@ const wchar_t *CLPUBMETHOD = L"method-public"; //то же, но для публичного метода
 const wchar_t *CLPUBPROP = L"property-public"; //то же, но для публичного свойства класса
 const wchar_t *DTORSYMB = L"~"; //символ що позначає деструктор
 
+wchar_t STRSYM = wchar_t(34); //признак строкового типа (")
+
 #define STRBUFSTACK 4096   //макс. размер строкового буфера для экспорта содержимого стеков
 #define CHARSIZE 4096      //максимальная длина строкового типа в скрипте
 #define NUMSIZE 24         //максимальное кол-во символов, описывающее число
@@ -137,7 +139,6 @@ const wchar_t *DTORSYMB = L"~"; //символ що позначає деструктор
 #define FUNCSYM '_'        //признак имени функции
 #define OBJSYM '&'         //признак имени объекта
 #define PROCSYM ':'        //признак имени процедуры
-#define STRSYM wchar_t(39) //признак строкового типа (')
 #define OBJPROPSEP '.'     //символ-признак свойства объекта
 #define NEGNUM '!'         //признак отрицательного числа
 #define ENDLN ';'          //признак конца строки

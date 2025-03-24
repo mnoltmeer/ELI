@@ -63,6 +63,7 @@ ELI::ELI()
   debug_in_file = false;
   use_return = false;
   use_false = false;
+  debugfile = L"debug.log";
   InitRes(true);
 };
 
@@ -461,7 +462,7 @@ bool ELI::RunProcedure(const wchar_t *name, const wchar_t *params, UINT index)
 
   for (UINT i = 0; i < prms.size(); i++)
      {
-	   swprintf(str, L"%s = '%s'", prms[i].c_str(), vals[i].c_str());
+	   swprintf(str, L"%s = %c%s%c", prms[i].c_str(), STRSYM, vals[i].c_str(), STRSYM);
 
        if (!CompileLine(str, index))
          {
@@ -1419,6 +1420,32 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 		   else
 			 {
 			   InterpreterSettings.KeepClasses = false;
+			   res = true;
+			 }
+		 }
+	   else if (_wstrincl(str, L"#oldsym", 0)) //використовувати символ ' як признак строкових констант
+		 {
+		   if (!settings_change)
+			 {
+			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
+			   res = false;
+			 }
+		   else
+			 {
+			   STRSYM = wchar_t(39);
+			   res = true;
+			 }
+		 }
+	   else if (_wstrincl(str, L"#!oldsym", 0)) //використовувати символ " як признак строкових констант
+		 {
+		   if (!settings_change)
+			 {
+			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
+			   res = false;
+			 }
+		   else
+			 {
+			   STRSYM = wchar_t(34);
 			   res = true;
 			 }
 		 }
@@ -4771,7 +4798,7 @@ void ELI::InitCompilerFuncs()
   fStack->Add(L"_ConnectLib", L"sym pPath", &scConnectLib);
   fStack->Add(L"_FreeLib", L"num pHandle", &scFreeLib);
   fStack->Add(L"_ImportFunc", L"num pHandle,sym pExtName,sym pInName,sym pArgList", &scImportFunc);
-  fStack->Add(L"_DebugIntoFile", L"", &scDebugIntoFile);
+  fStack->Add(L"_DebugIntoFile", L"sym pFile", &scDebugIntoFile);
   fStack->Add(L"_DebugIntoScreen", L"", &scDebugIntoScreen);
   fStack->Add(L"_StopDebug", L"", &scStopDebug);
   fStack->Add(L"_sleep", L"num pMsec", &scSleep);
@@ -4982,7 +5009,7 @@ void ELI::WriteELIDebug(const wchar_t *event, const wchar_t *rec)
   String str = String(event) + ": " + String(rec);
 
   if (debug_in_file)
-	SaveLogToUserFolder("ELI_debug.log", "ELI", str.c_str());
+	SaveLog(debugfile.c_str(), str.c_str());
   else
     wprintf(L"%s\n", str.c_str());
 }
@@ -5785,6 +5812,82 @@ float __stdcall ELI::GetParamToFloat(const wchar_t *name)
 const wchar_t * __stdcall ELI::GetParamToStr(const wchar_t *name)
 {
   return pStack->Get(name)->ToStr();
+}
+//-------------------------------------------------------------------------------
+
+const wchar_t * __stdcall ELI::GetObjectProperty(const wchar_t *obj_name, const wchar_t *prop_name)
+{
+  try
+     {
+	   RESRECORDSET rs = objStack->Get(obj_id, std::wstring(obj_name));
+
+	   if (rs.size() == 0)
+		 throw Exception(OBJNONE);
+
+	   rs.clear();
+
+	   rs = objStack->Get(std::wstring(obj_name), std::wstring(prop_name));
+
+	   if (rs.size() == 0)
+		 throw Exception(OBJNOPROP);
+
+	   if (IsClassMember(rs[0]->ObjectCathegory.c_str(), prop_name) &&
+		   !IsAccessibleMember(obj_name, prop_name))
+		 {
+		   throw Exception(OBJMEMNOTACC);
+		 }
+
+	   return rs[0]->Value.c_str();
+     }
+  catch (Exception &e)
+	 {
+	   String msg = "GetObjectProperty(" + String(obj_name) + ", " + String(prop_name) + ")";
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
+
+	   return L"";
+     }
+
+  return L"";
+}
+//-------------------------------------------------------------------------------
+
+bool __stdcall ELI::SetObjectProperty(const wchar_t *obj_name, const wchar_t *prop_name, const wchar_t *val)
+{
+  try
+     {
+	   RESRECORDSET rs = objStack->Get(obj_id, std::wstring(obj_name));
+
+	   if (rs.size() == 0)
+		 throw Exception(OBJNONE);
+
+	   rs.clear();
+
+	   rs = objStack->Get(std::wstring(obj_name), std::wstring(prop_name));
+
+	   if (rs.size() == 0)
+		 throw Exception(OBJNOPROP);
+
+	   if (IsClassMember(rs[0]->ObjectCathegory.c_str(), prop_name) &&
+		   !IsAccessibleMember(obj_name, prop_name))
+		 {
+		   throw Exception(OBJMEMNOTACC);
+		 }
+
+	   rs[0]->Value = val;
+
+	   return true;
+     }
+  catch (Exception &e)
+	 {
+	   String msg = "SetObjectProperty(" + String(obj_name) + ", " + String(prop_name) + ")";
+	   SaveLogToUserFolder("ELI.log", "ELI", msg);
+	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
+
+	   return false;
+	 }
+
+  return false;
 }
 //-------------------------------------------------------------------------------
 

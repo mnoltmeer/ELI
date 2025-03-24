@@ -20,30 +20,37 @@ This file is part of Extern Logic Interpreter.
 #ifndef ELI_INTERFACE_H_INCLUDED
 #define ELI_INTERFACE_H_INCLUDED
 
-typedef void (__stdcall *func_ptr)(void*);   //описываем указатель на ф-ю из основного приложения
+typedef void (__stdcall *func_ptr)(void*);   //describes pointer to function from main app
 
 struct ELI_INTERFACE
 {
-//добавляет функцию в стек
+//adds function to stack
 	virtual void __stdcall AddFunction(const wchar_t *name, const wchar_t *params, func_ptr fptr) = 0;
-//удаляет функцию из стека
+//removes function from stack
 	virtual void __stdcall DeleteFunction(const wchar_t *name) = 0;
-//вызывает функцию
+//calls a function
 	virtual void __stdcall CallFunction(const wchar_t *name) = 0;
-//преобразует возвращаемое значение функции в строку и возвращает указатель на нее
-//в случае ошибки возвращает NULL
+//converts return value of function to a string and returns pointer to it
+//return NULL in case of error
 	virtual wchar_t* __stdcall GetFunctionResult(const wchar_t *name) = 0;
-//устанавливает возвращаемое значение функции
+//sets function return value
 	virtual void __stdcall SetFunctionResult(const wchar_t *name, const wchar_t* result) = 0;
-//устанавливает новое значение параметра или добавляет новый параметр
+//sets new parameter value or adds new parameter in stack
 	virtual void __stdcall SetParam(const wchar_t *name, const wchar_t *new_val) = 0;
-//преобразует параметр в integer и возвращает его
+//converts parameter to an integer value and returns pointer to it
 	virtual int __stdcall GetParamToInt(const wchar_t *name) = 0;
-//преобразует параметр в float и возвращает его
+//converts parameter to a float value and returns pointer to it
 	virtual float __stdcall GetParamToFloat(const wchar_t *name) = 0;
-//преобразует параметр в строку и возвращает указатель на нее
-//в случае ошибки возвращает NULL
+//converts parameter to a string and returns pointer to it
+//return NULL in case of error
 	virtual const wchar_t* __stdcall GetParamToStr(const wchar_t *name) = 0;
+//returns value of object's property (property must be public)
+	virtual const wchar_t * __stdcall GetObjectProperty(const wchar_t *obj_name,
+														const wchar_t *prop_name) = 0;
+//sets value of object's property (property must be public)
+	virtual bool __stdcall SetObjectProperty(const wchar_t *obj_name,
+											 const wchar_t *prop_name,
+											 const wchar_t *val) = 0;
 
 	virtual const wchar_t* __stdcall GetVersion() = 0;
 	virtual const wchar_t* __stdcall ShowVarStack() = 0;
@@ -63,7 +70,7 @@ struct ELI_INTERFACE
 	virtual const wchar_t* __stdcall GetCurrentFuncName() = 0;
 	virtual void __stdcall SetDebug(bool enable_dbg, bool in_file) = 0;
 	virtual bool __stdcall DebugEnabled() = 0;
-//возвращает путь к каталогу, из которого запущен ELI
+//returns path to ELI work directory
 	virtual const wchar_t* __stdcall GetInitDir() = 0;
     virtual void __stdcall AddToLog(const wchar_t *msg) = 0;
 };

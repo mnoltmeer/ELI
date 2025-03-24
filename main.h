@@ -46,6 +46,7 @@ This file is part of Extern Logic Interpreter.
 
 String LogPath;
 wchar_t initdir[4096];
+std::wstring debugfile;
 
 class ELI: public ELI_INTERFACE
 {
@@ -54,7 +55,6 @@ class ELI: public ELI_INTERFACE
     bool write_log;
     bool debug_eli;
 	bool use_return;
-	std::wstring logfile;
 	std::wstring scrtext; //текст скрипта, с которым будет работать dll
 	UINT CstrInd; //глобальный индекс присваиваемый конст. строкам
 	UINT CnumInd; //глобальний індекс, що призначається числовим константам
@@ -213,7 +213,7 @@ class ELI: public ELI_INTERFACE
 //в случае ошибки возвращает NULL
 	virtual wchar_t * __stdcall GetFunctionResult(const wchar_t *name);
 //устанавливает возвращаемое значение функции
-	virtual void __stdcall SetFunctionResult(const wchar_t *name, const wchar_t* result);
+	virtual void __stdcall SetFunctionResult(const wchar_t *name, const wchar_t *result);
 //устанавливает новое значение параметра или добавляет новый параметр
 	virtual void __stdcall SetParam(const wchar_t *name, const wchar_t *new_val);
 //преобразует параметр в integer и возвращает его
@@ -223,6 +223,13 @@ class ELI: public ELI_INTERFACE
 //преобразует параметр в строку и возвращает указатель на нее
 //в случае ошибки возвращает NULL
 	virtual const wchar_t * __stdcall GetParamToStr(const wchar_t *name);
+//повертає значення властивості об'єкта (властивість має бути публічною)
+	virtual const wchar_t * __stdcall GetObjectProperty(const wchar_t *obj_name,
+														const wchar_t *prop_name);
+//встановлює значення властивості об'єкта (властивість має бути публічною)
+	virtual bool __stdcall SetObjectProperty(const wchar_t *obj_name,
+											 const wchar_t *prop_name,
+											 const wchar_t *val);
 
 	virtual const wchar_t * __stdcall GetVersion();
 	virtual const wchar_t * __stdcall ShowVarStack();
@@ -763,10 +770,10 @@ inline void __stdcall scLoadFileToVar(void *p)
 
 //использован путь типа ".\file.eli" - используется текущий каталог
   if (path[0] == '.')
-    {
+	{
 	  path.erase(0, 1);
 	  path = std::wstring(e_ptr->GetInitDir()) + path;
-    }
+	}
 
   std::wstring text = LoadTextFile(path.c_str()).c_str();
 
@@ -1156,6 +1163,15 @@ inline void __stdcall scDebugIntoFile(void *p)
 
   e_ptr->SetDebug(true, true);
 
+  debugfile = e_ptr->GetParamToStr(L"pFile");
+
+//використано шлях типу ".\file.eli" - використовується поточний каталог
+  if (debugfile[0] == '.')
+	{
+	  debugfile.erase(0, 1);
+	  debugfile = std::wstring(e_ptr->GetInitDir()) + debugfile;
+	}
+
   e_ptr->SetFunctionResult(L"_DebugIntoFile", L"0");
 
   if (e_ptr->DebugEnabled())
@@ -1184,6 +1200,8 @@ inline void __stdcall scStopDebug(void *p)
     e_ptr->WriteELIDebug(L"scStopDebug", L"[start]");
 
   e_ptr->SetDebug(false, false);
+
+  debugfile = L"debug.log";
 
   e_ptr->SetFunctionResult(L"_StopDebug", L"0");
 }
