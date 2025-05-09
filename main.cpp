@@ -5343,14 +5343,13 @@ const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, 
   RESOURCE res;
   res.ObjectCathegory = clname;
   res.ObjectID = obname;
+
   RESRECORDSET rs = clStack->Get(obj_id, clname);
 
   if (rs.size() == 0)
     {
       if (debug_eli)
-        {
-          WriteELIDebug(L"CreateTempObject", L"[return FAIL]");
-        }
+		WriteELIDebug(L"CreateTempObject", L"[return FAIL]");
 
       return L"0";
 	}
@@ -5387,6 +5386,8 @@ const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, 
 	  WriteELIDebug(L"CreateTempObject", obname.c_str());
 	  WriteELIDebug(L"CreateTempObject", L"[return OK]");
 	}
+
+  obname = tmp; //повертаємо значення від початку функції, нівелюючи зміни рекурсії
 
   return obname.c_str();
 }

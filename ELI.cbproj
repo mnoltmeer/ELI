@@ -126,7 +126,8 @@
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)$(CC_SUFFIX)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
-        <Debugger_RunParams>ELI.dll test.txt</Debugger_RunParams>
+        <Debugger_RunParams>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\ELI.dll test.txt</Debugger_RunParams>
+        <Debugger_CWD>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug</Debugger_CWD>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <Defines>NDEBUG;$(Defines)</Defines>
@@ -141,8 +142,8 @@
         <LinkPackageStatics>rtl.lib;vcl.lib;IndyProtocols.lib;IndyCore.lib;IndySystem.lib</LinkPackageStatics>
         <VerInfo_Release>3</VerInfo_Release>
         <VerInfo_AutoIncVersion>true</VerInfo_AutoIncVersion>
-        <VerInfo_Keys>CompanyName=;FileDescription=ELI library;FileVersion=1.0.3.7;InternalName=;LegalCopyright=2017-2024 Maxim Noltmeer (m.noltmeer@gmail.com);LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Extern Logic Interpreter;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <VerInfo_Build>7</VerInfo_Build>
+        <VerInfo_Keys>CompanyName=;FileDescription=ELI library;FileVersion=1.0.3.6;InternalName=;LegalCopyright=2017-2025 Maxim Noltmeer (m.noltmeer@gmail.com);LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=Extern Logic Interpreter;ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
+        <VerInfo_Build>6</VerInfo_Build>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
