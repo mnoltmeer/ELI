@@ -1,3 +1,9 @@
+[+] під час виклику _DrawImage(&img.GetName()) де _DrawImage це ф-я із зовнішньої
+    бібліотеки, метод eIface->GetCurrentFuncName() під час виконання _DrawImage
+    повертає GetName замість _DrawImage
+    виправлено рефакторингом методу RunFunc() і зміною логіки встановлення значення
+    (current_func_name = fn_ptr->GetName())
+
 [+] некоректно працює неймінг вкладених об'єктів через статичну змінну obname
     у CreateTempObject()
     вирішено скиданням значення obname = tmp перед виходом з функції

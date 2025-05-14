@@ -49,9 +49,11 @@ const wchar_t *UNKERR = L"Unknown error";
 const wchar_t *NUMERR = L"Can't convert to number type";
 const wchar_t *STRERR = L"Can't convert to character type";
 const wchar_t *LREXPRERR = L"Left and right values of expression is not equal";
+const wchar_t *FNPTRERR = L"Invalid pointer to function";
 const wchar_t *FNNAMERR = L"Unknown function or method";
 const wchar_t *FNARGERR = L"Error initialising argument(s) of function or method";
 const wchar_t *FNARGCNTERR = L"Wrong count of function arguments";
+const wchar_t *FNEMPTYRES = L"Function returns empty value!";
 const wchar_t *PROCNAMERR = L"Unknown procedure";
 const wchar_t *PROCARGCNTERR = L"Wrong count of procedure arguments";
 const wchar_t *PROCARGERR = L"Error initialising argument(s) of procedure";
@@ -462,11 +464,11 @@ inline int GetSize(){return FStack.size();}
 inline FRAGMENTCODE *ReadFragments(int ind)
 {
   if (ind < 0)
-	throw new Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
+	throw Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
   else if (ind < FStack.size())
 	return FStack[ind];
   else
-	throw new Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
+	throw Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
 }
 //-------------------------------------------------------------------------------
 

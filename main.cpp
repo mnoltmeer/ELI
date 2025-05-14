@@ -137,9 +137,11 @@ const wchar_t *ELI::GetObjCathegory(const wchar_t *obj_name)
 
 bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
 {
+  bool res = false;
+
   if (debug_eli)
     {
-      WriteELIDebug(L"RunFunc", L"[start]");
+	  WriteELIDebug(L"RunFunc", L"[start]");
       WriteELIDebug(L"RunFunc", str_with_func);
     }
 
@@ -162,39 +164,16 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
   FUNC *fn = fStack->Get(fname.c_str());
 
   if (fn)
-    {
-      current_func_name = fname; //сообщим ELI, что это имя текущей ф-ии
+	{
 	  std::vector<std::wstring> vecArgs, vecVals;
 
 	  if ((wcslen(fn->GetParams()) == 0) && (vals.length() == 0)) //нет параметров - ф-я без аргументов
-        {
-//выполняем функцию
-		  try
-			 {
-			   fn->Call(this);
-			   wcscpy(result, fn->GetResult());
-			 }
-		  catch (Exception &e)
-			 {
-			   String msg = "RunFunc(), call func without args: " + e.ToString();
-			   AddInfoMsg(msg.c_str(), ERRMSG, index);
-               wcscpy(result, L"0");
-			 }
-
-          if (debug_eli)
-            {
-              WriteELIDebug(L"RunFunc", result);
-              WriteELIDebug(L"RunFunc", L"[return OK]");
-            }
-
-          return true;
-        }
+		res = CallFunc(fn, result, index);
 	  else if ((wcslen(fn->GetParams()) != 0) && (vals.length() == 0)) //нет параметров но ф-я с аргументами
 		{
           AddInfoMsg(FNARGCNTERR, ERRMSG, index);
-          AddInfoMsg(FNARGERR, ERRMSG, index);
-
-		  return false;
+		  AddInfoMsg(FNARGERR, ERRMSG, index);
+		  res = false;
         }
 	  else
         {
@@ -208,7 +187,7 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
               wchar_t ptype[5], pname[PNAMESIZE], pval[CHARSIZE];
 
               for (UINT i = 0; i < vecVals.size(); i++)
-                {
+				{
 //инициализируем параметры и добавляем их в стек
                   try
                     {
@@ -260,9 +239,9 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
 
                       pStack->Add(pname, pval);
                     }
-				 catch(Exception &e)
+				 catch (Exception &e)
                     {
-					  String msg = "RunFunc(), traslate func args: " + e.ToString();
+					  String msg = "RunFunc(" + String(str_with_func) + "), create params: " + e.ToString();
 					  AddInfoMsg(FNARGERR, ERRMSG, index);
 					  AddInfoMsg(msg.c_str(), ERRMSG, index);
 					  wcscpy(result, L"0");
@@ -272,52 +251,77 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
                 }
 
 //выполняем функцию
-              try
-				 {
-				   fn->Call(this);
-				   wcscpy(result, fn->GetResult());
-				 }
-			  catch (Exception &e)
-				 {
-				   String msg = "RunFunc(), call func with args: " + e.ToString();
-				   AddInfoMsg(msg.c_str(), ERRMSG, index);
-				 }
+			  res = CallFunc(fn, result, index);
             }
           else
             {
-              AddInfoMsg(FNARGCNTERR, ERRMSG, index);
-
-              return false;
-            }
-        }
+			  AddInfoMsg(FNARGCNTERR, ERRMSG, index);
+			  res = false;
+			}
+		}
     }
   else
     {
-      AddInfoMsg(FNNAMERR, ERRMSG, index);
-
-      return false;
+	  AddInfoMsg(FNNAMERR, ERRMSG, index);
+	  res = false;
     }
 
   if (_wstrincl(fname.c_str(), L"return", 1))
     {
-      AddInfoMsg(SCEXIT, INFMSG, index);
-
-	  return false;
+	  AddInfoMsg(SCEXIT, INFMSG, index);
+	  res = false;
     }
   else if (_wstrincl(fname.c_str(), L"throw", 1))
     {
-      AddInfoMsg(SCEXCEPT, INFMSG, index);
-
-      return false;
-    }
+	  AddInfoMsg(SCEXCEPT, INFMSG, index);
+	  res = false;
+	}
 
   if (debug_eli)
-    {
+	{
 	  WriteELIDebug(L"RunFunc", result);
-      WriteELIDebug(L"RunFunc", L"[return OK]");
-    }
+	  WriteELIDebug(L"RunFunc", L"[end]");
+	}
 
-  return true;
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+bool ELI::CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index)
+{
+  bool res = false;
+
+  if (debug_eli)
+	WriteELIDebug(L"CallFunc", fn_ptr->GetName());
+
+  try
+	 {
+	   if (!fn_ptr)
+		 throw Exception(FNPTRERR);
+
+	   current_func_name = fn_ptr->GetName(); //повідомимо ELI ім'я поточної ф-ції
+
+	   fn_ptr->Call(this);
+
+	   if (_wcsicmp(fn_ptr->GetResult(), L"") == 0) //захист від порожньої строки у результаті ф-ї
+		 throw Exception(FNEMPTYRES);
+	   else
+		 wcscpy(result, fn_ptr->GetResult());
+
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   String msg = "CallFunc: " + e.ToString();
+	   AddInfoMsg(msg.c_str(), ERRMSG, index);
+	   wcscpy(result, L"0");
+
+	   res = false;
+	 }
+
+  current_func_name = L""; //обнулимо ім'я поточно\ функції для запобігання казусів
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -885,7 +889,7 @@ void ELI::RunTrigger(TRIGGER *trigger)
 			if (code)
 			  CompileFragment(code, 0);
 			else
-			  throw new Exception("Fragment not found");
+			  throw Exception("Fragment not found");
 		  }
 	   catch (Exception &e)
 		  {

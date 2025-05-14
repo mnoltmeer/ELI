@@ -126,7 +126,7 @@
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)$(CC_SUFFIX)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
         <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
-        <Debugger_RunParams>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\ELI.dll test.txt</Debugger_RunParams>
+        <Debugger_RunParams>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\ELI.dll C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\ConsoleTest.es</Debugger_RunParams>
         <Debugger_CWD>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug</Debugger_CWD>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">

@@ -179,6 +179,7 @@ class ELI: public ELI_INTERFACE
 	bool ExpWhen(wchar_t *line, UINT index);
 
 	bool RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index);
+	bool CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index);
 	bool CreateProcedure(wchar_t *str_with_proc, UINT index);
 	bool DropProcedure(const wchar_t *proc_name);
 	bool RunProcedure(const wchar_t *name, const wchar_t *params, UINT index);
@@ -1694,21 +1695,22 @@ inline void __stdcall objGetName(void *p)
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
   std::wstring objname = e_ptr->GetParamToStr(P_OBJNAME);
-  RESRECORDSET rs = e_ptr->GetObjStack()->Get(objname, L"ObjectName");
+  RESRECORDSET rs = e_ptr->GetObjStack()->Get(obj_id, objname);
 
-  if (rs.size() == 1)
+  if (rs.size() == 0)
     {
-      e_ptr->SetFunctionResult(L"GetName", rs[0]->Value.c_str());
-    }
+	  e_ptr->AddInfoMsg(OBJNONE, WRNMSG, ind);
+
+	  e_ptr->SetFunctionResult(L"GetName", L"0");
+	}
   else
-    {
-      e_ptr->AddInfoMsg(OBJNOPROP, WRNMSG, ind);
-
-      e_ptr->SetFunctionResult(L"GetName", L"0");
-    }
+	{
+	  objname = objname.erase(0, 1);
+	  e_ptr->SetFunctionResult(L"GetName", objname.c_str());
+	}
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objGetName", L"[end]");
+	e_ptr->WriteELIDebug(L"objGetName", L"[end]");
 }
 //-------------------------------------------------------------------------------
 
