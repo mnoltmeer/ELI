@@ -1303,7 +1303,7 @@ inline void __stdcall objCreate(void *p)
         }
 
 //добавим служебное свойство - имя объекта
-      res.PropertyID = L"ObjectName";
+	  res.PropertyID = L"ObjectName";
       res.Value = name;
 
       e_ptr->GetObjStack()->Add(res);

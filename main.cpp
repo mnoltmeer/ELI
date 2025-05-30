@@ -206,7 +206,7 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
                             swprintf(pval, FRMTNUM, *fres);
                           else
                             {
-                              AddInfoMsg(NUMERR, ERRMSG, index);
+							  AddInfoMsg(NUMERR, ERRMSG, index);
 
                               return false;
                             }
@@ -215,7 +215,8 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
                         {
 //если функци€ не из тех, которые используют в качестве аргументов имена переменных
 //приведем содержимое аргумента к простому значению
-                          if (!_wstriincl(fname.c_str(), L"free", 1) &&
+						  if (!_wstriincl(fname.c_str(), L"Create", 0) &&
+							  !_wstriincl(fname.c_str(), L"free", 1) &&
                               !_wstriincl(fname.c_str(), L"Run", 1) &&
                               !_wstriincl(fname.c_str(), L"ReadIn", 1) &&
                               (!(_wstriincl(fname.c_str(), L"LoadFileToVar", 1) && (_wcsicmp(pname, L"pTarget") == 0)))&&
@@ -227,7 +228,7 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
                               if (0 != _wcsicmp(sres, ERROUT))
                                 wcscpy(pval, sres);
                               else
-                                return false;
+								return false;
                             }
                         }
                       else
@@ -426,19 +427,28 @@ bool ELI::RunProcedure(const wchar_t *name, const wchar_t *params, UINT index)
     {
       AddInfoMsg(PROCNAMERR, ERRMSG, index);
 
-      return false;
-    }
+	  return false;
+	}
 
-  if (_wstrccount(rs[0]->Value.c_str(), ',') != _wstrccount(params, ','))
-    {
-      AddInfoMsg(PROCARGCNTERR, ERRMSG, index);
+//приберем завершальну ',' з params, €ка з'€вл€Їтьс€ у випадку, коли останн≥й параметр Ї порожн≥м р€дком
+  UINT len = wcslen(params),
+	   argsccnt = _wstrccount(rs[0]->Value.c_str(), ','),
+	   prmsccnt = _wstrccount(params, ',');
 
-      return false;
-    }
+//€кщо в аргументах немаЇ ',' (один аргумент), а в параметрах останн≥й символ це ',' (параметр - порожн€ строка)
+  if ((params[len - 1] == ',') && (argsccnt == 0))
+	prmsccnt--; //змусимо ELI ≥гнорувати цю кому
+
+  if (argsccnt != prmsccnt)
+	{
+	  AddInfoMsg(PROCARGCNTERR, ERRMSG, index);
+
+	  return false;
+	}
 
 //получаем списки имен указанных при объ€влении параметров и полученных значений
   if (rs[0]->Value != L"")
-    {
+	{
 	  StrToListW(&prms, rs[0]->Value, L",", NODELIMEND);
 	  StrToListW(&vals, std::wstring(params), L",", NODELIMEND);
 	}
