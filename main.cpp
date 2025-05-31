@@ -424,8 +424,8 @@ bool ELI::RunProcedure(const wchar_t *name, const wchar_t *params, UINT index)
   RESRECORDSET rs = procStack->Get(obj_id, std::wstring(name));
 
   if (rs.size() < 2)
-    {
-      AddInfoMsg(PROCNAMERR, ERRMSG, index);
+	{
+	  AddInfoMsg(PROCNAMERR, ERRMSG, index);
 
 	  return false;
 	}
@@ -5284,7 +5284,7 @@ bool ELI::ImportParentClass(std::wstring child, std::wstring parent, bool type)
   c.type = obj_cath;
 
   if (type)
-    c.value = CLPUBPROP;
+	c.value = CLPUBPROP;
   else
     c.value = CLPUBMETHOD;
 
@@ -5309,20 +5309,35 @@ bool ELI::ImportParentClass(std::wstring child, std::wstring parent, bool type)
 
 		  if (records[i].ObjectCathegory == CLPUBMETHOD)
             {
-              RESRECORDSET pr;
-			  RESOURCE ch_proc;
+			  RESRECORDSET pr;
+			  RESOURCE ch_proc_prm, ch_proc_txt;
 
 			  pr = procStack->Get(obj_id, parent + records[i].PropertyID);
 
-              for (UINT j = 0; j < pr.size(); j++)
-                {
-                  ch_proc = *pr[j];
-				  ch_proc.ObjectID = child + records[i].PropertyID;
-                  procStack->Add(ch_proc);
+			  if (pr.size() < 2) //не вистачає записів у стеку процедур
+				{
+                  if (debug_eli)
+					{
+					  WriteELIDebug(L"ImportParentClass", std::wstring(parent + records[i].PropertyID).c_str());
+					  WriteELIDebug(L"ImportParentClass", L"[return FAIL]");
+					}
+
+				  return false;
 				}
-            }
-        }
-    }
+			  else
+				{
+				  ch_proc_prm = *pr[0];
+				  ch_proc_prm.ObjectID = child + records[i].PropertyID;
+
+				  ch_proc_txt = *pr[1];
+				  ch_proc_txt.ObjectID = child + records[i].PropertyID;
+
+				  procStack->Add(ch_proc_prm);
+				  procStack->Add(ch_proc_txt);
+				}
+			}
+		}
+	}
 
   return true;
 }
@@ -5331,10 +5346,10 @@ bool ELI::ImportParentClass(std::wstring child, std::wstring parent, bool type)
 const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, UINT index)
 {
   if (debug_eli)
-    {
-      WriteELIDebug(L"CreateTempObject", L"[start]");
-      WriteELIDebug(L"CreateTempObject", ctor_str.c_str());
-    }
+	{
+	  WriteELIDebug(L"CreateTempObject", L"[start]");
+	  WriteELIDebug(L"CreateTempObject", ctor_str.c_str());
+	}
 
   std::wstring clname, ctor_args;
   static std::wstring obname;

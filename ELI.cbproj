@@ -4,7 +4,7 @@
         <ProjectVersion>20.1</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Library</AppType>
@@ -124,9 +124,9 @@
         <Manifest_File>(None)</Manifest_File>
         <Debugger_HostApplication>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\et.exe</Debugger_HostApplication>
         <ILINK_LibraryPath>$(BDSLIB)\$(PLATFORM)$(CC_SUFFIX)\debug;$(ILINK_LibraryPath)</ILINK_LibraryPath>
-        <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
         <Debugger_RunParams>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\ELI.dll C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug\test.txt</Debugger_RunParams>
+        <BCC_UseClassicCompiler>false</BCC_UseClassicCompiler>
         <Debugger_CWD>C:\Users\mnolt\OneDrive\GIT\ELI\Win32\Debug</Debugger_CWD>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -177,6 +177,10 @@
         <None Include="scdefines.h">
             <BuildOrder>7</BuildOrder>
         </None>
+        <CppCompile Include="tests.cpp">
+            <DependentOn>tests.h</DependentOn>
+            <BuildOrder>12</BuildOrder>
+        </CppCompile>
         <None Include="todo.txt"/>
         <None Include="..\work-functions\efstring.h">
             <BuildOrder>9</BuildOrder>
@@ -309,6 +313,18 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName=".\Win32\Debug\ELI.dll" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName=".\Win32\Debug\ELI.dll" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>ELI.dll</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName=".\Win32\Debug\ELI.tds" Configuration="Debug" Class="DebugSymbols">
+                    <Platform Name="Win32">
+                        <RemoteName>ELI.tds</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName=".\Win32\Release\ELI.dll" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>ELI.dll</RemoteName>
