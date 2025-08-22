@@ -4782,7 +4782,7 @@ void ELI::InitCompilerFuncs()
   fStack->Add(L"_random", L"num pArea", &scRandom);
   fStack->Add(L"_round", L"num pNumber,num pPrecision", &scRound);
   fStack->Add(L"_int", L"num pNumber", &scInt);
-  fStack->Add(L"_wcslen", L"sym pStr", &scStrLen);
+  fStack->Add(L"_strlen", L"sym pStr", &scStrLen);
   fStack->Add(L"_streq", L"sym pStr1,sym pStr2", &scStrEq);
   fStack->Add(L"_istreq", L"sym pStr1,sym pStr2", &scIStrEq);
   fStack->Add(L"_substr", L"sym pTargetStr,num pPos,num pCount", &scSubStr);
