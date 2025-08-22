@@ -388,7 +388,7 @@ inline void __stdcall scStrLen(void *p)
 
   swprintf(res, L"%d", len);
 
-  e_ptr->SetFunctionResult(L"_wcslen", res);
+  e_ptr->SetFunctionResult(L"_strlen", res);
 
   if (e_ptr->DebugEnabled())
     e_ptr->WriteELIDebug(L"scStrLen", L"[end]");
