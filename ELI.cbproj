@@ -4,7 +4,7 @@
         <ProjectVersion>20.1</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <TargetedPlatforms>1</TargetedPlatforms>
         <AppType>Library</AppType>
@@ -148,6 +148,9 @@
         <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <ItemGroup>
+        <None Include="defines.h">
+            <BuildOrder>7</BuildOrder>
+        </None>
         <PCHCompile Include="ELIPCH1.h">
             <BuildOrder>0</BuildOrder>
             <PCH>true</PCH>
@@ -157,37 +160,38 @@
         </None>
         <CppCompile Include="eli_script.cpp">
             <DependentOn>eli_script.h</DependentOn>
-            <BuildOrder>11</BuildOrder>
-        </CppCompile>
-        <None Include="fn_prm.h">
             <BuildOrder>2</BuildOrder>
-        </None>
+        </CppCompile>
         <CppCompile Include="main.cpp">
-            <BuildOrder>3</BuildOrder>
+            <DependentOn>main.h</DependentOn>
+            <BuildOrder>0</BuildOrder>
         </CppCompile>
-        <None Include="main.h">
-            <BuildOrder>4</BuildOrder>
+        <None Include="oldfuncs.h">
+            <BuildOrder>15</BuildOrder>
         </None>
-        <CppCompile Include="resourcestack.cpp">
-            <BuildOrder>5</BuildOrder>
+        <CppCompile Include="stacks.cpp">
+            <DependentOn>stacks.h</DependentOn>
+            <BuildOrder>1</BuildOrder>
         </CppCompile>
-        <None Include="resourcestack.h">
-            <BuildOrder>6</BuildOrder>
-        </None>
-        <None Include="scdefines.h">
-            <BuildOrder>7</BuildOrder>
-        </None>
         <CppCompile Include="tests.cpp">
             <DependentOn>tests.h</DependentOn>
-            <BuildOrder>12</BuildOrder>
+            <BuildOrder>6</BuildOrder>
         </CppCompile>
         <None Include="todo.txt"/>
+        <CppCompile Include="..\work-functions\Data.cpp">
+            <DependentOn>..\work-functions\Data.h</DependentOn>
+            <BuildOrder>4</BuildOrder>
+        </CppCompile>
         <None Include="..\work-functions\efstring.h">
             <BuildOrder>9</BuildOrder>
         </None>
-        <CppCompile Include="..\work-functions\MyFunc.cpp">
-            <DependentOn>..\work-functions\MyFunc.h</DependentOn>
-            <BuildOrder>8</BuildOrder>
+        <CppCompile Include="..\work-functions\FilesDirs.cpp">
+            <DependentOn>..\work-functions\FilesDirs.h</DependentOn>
+            <BuildOrder>5</BuildOrder>
+        </CppCompile>
+        <CppCompile Include="..\work-functions\Logs.cpp">
+            <DependentOn>..\work-functions\Logs.h</DependentOn>
+            <BuildOrder>3</BuildOrder>
         </CppCompile>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

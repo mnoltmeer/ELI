@@ -1,5 +1,5 @@
 /*!
-Copyright 2017-2019, 2021 Maxim Noltmeer (m.noltmeer@gmail.com)
+Copyright 2017-2025 Maxim Noltmeer (m.noltmeer@gmail.com)
 
 This file is part of Extern Logic Interpreter.
 
@@ -76,20 +76,16 @@ struct ELI_INTERFACE
 };
 //-------------------------------------------------------------------------------
 
-#if defined(BUILD_DLL)
-	#define DLL_EXPORT __declspec(dllexport)
+#ifdef BUILD_DLL
+	#define ELI_API __declspec(dllexport)
 #else
-	#if defined(BUILD_APP)
-		#define DLL_EXPORT __declspec(dllimport)
-	#else
-		#define DLL_EXPORT
-	#endif
+	#define ELI_API __declspec(dllimport)
 #endif
 
 extern "C"
 {
-  DLL_EXPORT int __stdcall GetELIInterface(ELI_INTERFACE **eInterface);
-  DLL_EXPORT int __stdcall FreeELIInterface(ELI_INTERFACE **eInterface);
+  ELI_API int __stdcall GetELIInterface(ELI_INTERFACE **eInterface);
+  ELI_API int __stdcall FreeELIInterface(ELI_INTERFACE **eInterface);
 }
 
 typedef int (__stdcall *GETELIINTERFACE)(ELI_INTERFACE **eInterface);
