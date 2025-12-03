@@ -147,6 +147,11 @@ extern const wchar_t *OBJTHIS; //шаблон імені змінної ідентифікатора this для об
 
 extern wchar_t STRSYM; //признак строкового типа (")
 
+//маркування для логувань трансляції рядків
+extern const wchar_t *TROK;    //успішно
+extern const wchar_t *TRFAIL;  //помилка трансляції
+extern const wchar_t *TRINFO;  //повідомлення про помилку/подію
+
 #define STRBUFSTACK 4096   //макс. размер строкового буфера для экспорта содержимого стеков
 #define CHARSIZE 8192      //максимальная длина строкового типа в скрипте
 #define NUMSIZE 24         //максимальное кол-во символов, описывающее число
