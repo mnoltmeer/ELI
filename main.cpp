@@ -4956,43 +4956,48 @@ void ELI::SaveELIState()
   if (debug_eli)
     WriteELIDebug(L"SaveELIState", L"[START]");
 
-  String path = LogPath + "\\state.log";
+  String file = LogPath + "\\state.log";
   wchar_t timestamp[64];
   swprintf(timestamp, L"%s %s", DateToStr(Date()).c_str(), TimeToStr(Time()).c_str());
 
-  AddToFile(path, "[");
-  AddToFile(path, timestamp);
-  AddToFile(path, "] Current state of ELI stacks:\r\n\r\n");
-  AddToFile(path, "*** Variable stacks ***\r\n");
+  std::unique_ptr<TStringStream> ms(new TStringStream("", TEncoding::UTF8, true));
+
+  ms->WriteString("[");
+  ms->WriteString(timestamp);
+  ms->WriteString("] Current state of ELI stacks:\r\n\r\n");
+  ms->WriteString("*** Variable stacks ***\r\n");
 
   wchar_t str[32];
 
   for (UINT i = 0; i < vecVSt.size(); i++)
     {
-      swprintf(str, L"Stack[%d]:\r\n", i);
-	  AddToFile(path, str);
-	  AddToFile(path, vecVSt[i]->GetString());
+	  swprintf(str, L"Stack[%d]:\r\n", i);
+	  ms->WriteString(str);
+	  ms->WriteString(vecVSt[i]->GetString());
     }
 
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Parameter stack ***\r\n");
-  AddToFile(path, pStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Object stack ***\r\n");
-  AddToFile(path, objStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Function stack ***\r\n");
-  AddToFile(path, fStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Class stack ***\r\n");
-  AddToFile(path, clStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Procedure stack ***\r\n");
-  AddToFile(path, procStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n\r\n");
-  AddToFile(path, "*** Pretranslated fragments stack ***\r\n");
-  AddToFile(path, frgStack->GetString());
-  AddToFile(path, "\r\n-----------------------------------------------------\r\n");
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Parameter stack ***\r\n");
+  ms->WriteString(pStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Object stack ***\r\n");
+  ms->WriteString(objStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Function stack ***\r\n");
+  ms->WriteString(fStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Class stack ***\r\n");
+  ms->WriteString(clStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Procedure stack ***\r\n");
+  ms->WriteString(procStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n\r\n");
+  ms->WriteString("*** Pretranslated fragments stack ***\r\n");
+  ms->WriteString(frgStack->GetString());
+  ms->WriteString("\r\n-----------------------------------------------------\r\n");
+
+  ms->Position = 0;
+  ms->SaveToFile(file);
 
   if (debug_eli)
     WriteELIDebug(L"SaveELIState", L"[END]");
@@ -5001,31 +5006,36 @@ void ELI::SaveELIState()
 
 void ELI::SaveVStState(UINT level)
 {
-  String path = LogPath + "\\varstack.log";
+  String file = LogPath + "\\varstack.log";
   wchar_t timestamp[64];
   swprintf(timestamp, L"%s %s", DateToStr(Date()).c_str(), TimeToStr(Time()).c_str());
 
-  AddToFile(path, "[");
-  AddToFile(path, timestamp);
-  AddToFile(path, " ]\r\n\r\n");
+  std::unique_ptr<TStringStream> ms(new TStringStream("", TEncoding::UTF8, true));
+
+  ms->WriteString("[");
+  ms->WriteString(timestamp);
+  ms->WriteString(" ]\r\n\r\n");
 
   if ((level == 0) && vStack)
 	{
-	  AddToFile(path, "*** Variable stack (global) ****\r\n");
-	  AddToFile(path, vStack->GetString());
-	  AddToFile(path, "-----------------------------------------------------\r\n\r\n");
+	  ms->WriteString("*** Variable stack (global) ****\r\n");
+	  ms->WriteString(vStack->GetString());
+	  ms->WriteString("-----------------------------------------------------\r\n\r\n");
 	}
   else if ((level == 1) && st)
 	{
-	  AddToFile(path, "*** Variable stack (local) ***\r\n");
-	  AddToFile(path, st->GetString());
-	  AddToFile(path, "-----------------------------------------------------\r\n\r\n");
+	  ms->WriteString("*** Variable stack (local) ***\r\n");
+	  ms->WriteString(st->GetString());
+	  ms->WriteString("-----------------------------------------------------\r\n\r\n");
 	}
   else
 	{
-	  AddToFile(path, "Error saving stack!\r\n");
-	  AddToFile(path, "-----------------------------------------------------\r\n\r\n");
+	  ms->WriteString("Error saving stack!\r\n");
+	  ms->WriteString("-----------------------------------------------------\r\n\r\n");
 	}
+
+  ms->Position = 0;
+  ms->SaveToFile(file);
 }
 //-------------------------------------------------------------------------------
 
