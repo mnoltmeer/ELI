@@ -147,6 +147,11 @@ extern const wchar_t *OBJTHIS; //шаблон імені змінної ідентифікатора this для об
 
 extern wchar_t STRSYM; //признак строкового типа (")
 
+//маркування для логувань трансляції рядків
+extern const wchar_t *TROK;    //успішно
+extern const wchar_t *TRFAIL;  //помилка трансляції
+extern const wchar_t *TRINFO;  //повідомлення про помилку/подію
+
 #define STRBUFSTACK 4096   //макс. размер строкового буфера для экспорта содержимого стеков
 #define CHARSIZE 8192      //максимальная длина строкового типа в скрипте
 #define NUMSIZE 24         //максимальное кол-во символов, описывающее число
@@ -178,5 +183,9 @@ extern const wchar_t *P_OBJNAME;   //имя объекта с которым произв. операция
 extern const wchar_t *P_PROPNAME; //имя свойства объекта с которым произв. операция
 extern const wchar_t *P_SCRNAME;   //имя скрипта
 extern const wchar_t *P_SELECT;  //значение полученное конструкцией select
+extern const wchar_t *P_ELI_VER; //версія інтерпретатора
+extern const wchar_t *P_ELI_PATH; //шлях до бібліотеки
+extern const wchar_t *P_ELI_DIR; //робочий каталог
+extern const wchar_t *P_ELI_HANDLE; //дескриптор об'єкта ELI
 
 #endif

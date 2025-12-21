@@ -23,13 +23,12 @@ This file is part of Extern Logic Interpreter.
 #include "stacks.h"
 
 String LogPath;
-wchar_t initdir[4096];
+wchar_t initdir[4096], path[4096];
 std::wstring debugfile;
 
 class ELI: public ELI_INTERFACE
 {
   private:
-
     bool write_log;
     bool debug_eli;
 	bool use_return;
@@ -48,17 +47,18 @@ class ELI: public ELI_INTERFACE
 						//тож не треба писати повідомлення в лог
 	bool settings_change; //флаг що визначає момент, коли код вносить зміни
 						  //у налаштування інтерпретатора
-
-    SETTINGS InterpreterSettings; //налаштування інтерпретатора
-
-    SCRIPTLINES vecScList; //вектор для хранения строк скрипта
+	SETTINGS InterpreterSettings; //налаштування інтерпретатора
+	std::vector<std::wstring> vecScList; //вектор для хранения строк скрипта
     FRAGMENTSTACK *frgStack;
 	std::vector<VARSTACK*> vecVSt; //вектор указателей на стеки переменных
-                              //нулевой элемент указывает на глобальный стек
+								   //нулевой элемент указывает на глобальный стек
 	std::vector<HINSTANCE> vecLibs; //вектор для дескрипторов внешних библиотек
 	std::vector<EXTFUNC> vecExtFuncs; //вектор со списком импортированных ф-й
 	std::vector<REFERENCE> vecRefs; //вектор со списком ссылок
 	std::vector<TRIGGER> vecTriggers; //вектор з переліком доступних тригерів
+	std::wstring FStrBuffer; //буфер для обміну текстовою інформацією між методами класу
+	SCRIPTLINES FCodeBuffer; //буфер для обміну рядками скрипту
+    float FNumBuffer;
 
 ///стеки для рантайм переменных скрипта
     VARSTACK *vStack; //стек переменных для скрипта
@@ -79,7 +79,7 @@ class ELI: public ELI_INTERFACE
 //подготавливает интерпретатор к запуску нового скрипта
 	void FreeRes();
 //компилирует фрагмент кода (тело цикла или условия)
-	bool TranslateFragment(SCRIPTLINES *vecFragment, UINT index);
+	bool TranslateFragment(std::vector<std::wstring> *vecFragment, UINT index);
 //проверяет содержится ли такое значение в стеке
 	bool IsStackContent(std::vector<std::wstring> *strStack, std::wstring val);
 	bool IsStackContent(std::vector<float> *numstack, float val);
@@ -126,7 +126,7 @@ class ELI: public ELI_INTERFACE
 //прибирає переноси рядків
 	std::wstring RemoveEndlines(std::wstring text);
 //заменяет директивы #include в исходном тексте скрипта на содержимое инклуд-файлов
-	SCRIPTLINES GetInclude(const wchar_t *str);
+	std::vector<std::wstring> GetInclude(const wchar_t *str);
 //разбивает скрипт на строки и заполняет вектор
 //разделителем строк является ENDLN
 	void PrepareScript();
@@ -177,7 +177,6 @@ class ELI: public ELI_INTERFACE
 	void CheckTriggers();
 //обробка директив
 	bool ProcessDirective(wchar_t *str, UINT index);
-	SCRIPTLINES ChangeSettings(wchar_t *str);
 //створює нові записи в стеку класів, на основі рядка з ProcessDirective()
 	bool AddClassProperty(std::wstring &cl_name, std::wstring &prop_str, bool is_public, UINT index);
 	bool AddClassMethod(std::wstring &cl_name, std::wstring &method_str, bool is_public, UINT index);
@@ -278,18 +277,17 @@ class ELI: public ELI_INTERFACE
 	bool ImportMemberFromObject(std::wstring &obj_name, std::wstring &src_name, std::wstring &mb_name, UINT index);
     bool ImportMemberFromClass(std::wstring &obj_name, std::wstring &cl_name, std::wstring &mb_name, UINT index);
 
-	inline PARAMSTACK *GetParamStack(){return pStack;}
-    inline FUNCSTACK *GetFuncStack(){return fStack;}
-	inline RESOURCESTACK *GetObjStack(){return objStack;}
-	inline RESOURCESTACK *GetClassStack(){return clStack;}
-	inline RESOURCESTACK *GetProcStack(){return procStack;}
-	inline VARSTACK *GetVarStack(){return st;}
-	inline FRAGMENTSTACK *GetFragmentStack(){return frgStack;}
-	inline std::vector<EXTFUNC> *GetExtFnStack(){return &vecExtFuncs;}
-
-	inline void SetScriptResult(const wchar_t *res){ScriptResult = res;}
-	inline void ReturnEnabled(bool res){use_return = res;}
-	inline void SetInitDir(const wchar_t *path){wcscpy(initdir, path);}
+	__property PARAMSTACK *ParamStack = {read = pStack};
+	__property FUNCSTACK *FuncStack = {read = fStack};
+	__property RESOURCESTACK *ObjStack = {read = objStack};
+	__property RESOURCESTACK *ClassStack = {read = clStack};
+	__property RESOURCESTACK *ProcStack = {read = procStack};
+	__property VARSTACK *VarStack = {read = st};
+	__property FRAGMENTSTACK *FragmentStack = {read = frgStack};
+	__property std::vector<EXTFUNC> ExtFnStack = {read = vecExtFuncs};
+	__property bool ReturnEnabled = {read = use_return, write = use_return};
+	__property SETTINGS *Settings = {read = InterpreterSettings};
+	__property std::wstring Result = {read = ScriptResult, write = ScriptResult};
 };
 //-------------------------------------------------------------------------------
 
@@ -331,6 +329,7 @@ void __stdcall scDebugIntoFile(void *p);
 void __stdcall scDebugIntoScreen(void *p);
 void __stdcall scStopDebug(void *p);
 void __stdcall scSleep(void *p);
+void __stdcall scShowMessage(void *p);
 
 ///ф-ции, отвечающие за методы объектов
 void __stdcall objCreate(void *p);

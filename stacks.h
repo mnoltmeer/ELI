@@ -59,6 +59,9 @@ class RESOURCESTACK
   private:
 	UINT next_id;
 	std::vector<RESOURCE> Stack;
+	std::wstring FStrBuffer;
+	StrList FExportData;
+
 	UINT GetNextID();
 //делает выборку из стека ресурсов по определенному значению, возвращает вектор указателей
 //на те элементы, которые удовлетворяют аргументу value
@@ -75,20 +78,19 @@ class RESOURCESTACK
 	virtual ~RESOURCESTACK();
 
 	UINT StackSize();
-
-	const wchar_t *StackInString();
+	const wchar_t *GetString();
 
 //делает выборку ресурсов по заданому набору условий
 	RESRECORDSET Get(std::vector<CONDITION> *conditions);
 	RESRECORDSET Get(UINT type, std::wstring val);
 	RESRECORDSET Get(std::wstring obj_name, std::wstring prop_name);
-	std::vector<int> *Get(UINT type, const wchar_t *val);
+	std::vector<int> Get(UINT type, const wchar_t *val);
 
 	int Add(RESOURCE newres);
 	int Delete(std::wstring ObjectCathegory, std::wstring ObjectID, std::wstring ResourceID);
 	int Delete(UINT index);
 	int CreateResFile(const wchar_t *filepath, bool overwrite);
-	int CreateResFile(const wchar_t *filepath, const wchar_t *res_cath);
+	int CreateResFile(const wchar_t *filepath, const wchar_t *res_cath, bool overwrite);
 	int LoadResFile(const wchar_t *filepath);
 	void Compact();
 	void Clear();
@@ -115,11 +117,8 @@ class PARAM
 
 //преобразует параметр в integer и возвращает его
 	int ToInt();
-
 //преобразует параметр в float и возвращает его
-	inline float ToFloat(){return _wtof(val.c_str());}
-//-------------------------------------------------------------------------------
-
+	float ToFloat();
 //преобразует параметр в строку и возвращает указатель на нее
 //в случае ошибки возвращает NULL
 	inline const wchar_t *ToStr(){return val.c_str();}
@@ -130,26 +129,23 @@ class PARAMSTACK
 {
   private:
 	std::vector<PARAM*> Stack;
+	std::wstring FStrBuffer;
 
 //ищет параметр в стеке по имени и возвращает индекс
 //-1 - не найдено
-	int GetParamInd(const wchar_t *name);
+	int GetInd(const wchar_t *name);
 
   public:
     inline PARAMSTACK(){};
-    inline virtual ~PARAMSTACK(){Clear();}
-
-//добавляет параметр в конец стека
-	void Add(const wchar_t *name, const wchar_t *val);
+	inline virtual ~PARAMSTACK(){Clear();}
 
 //возвращает количество параметров в стеке
 	inline UINT Count(){return Stack.size();}
-
+//добавляет параметр в конец стека
+	void Add(const wchar_t *name, const wchar_t *val);
 //возвращает форматированную строку со списком всех ф-й
-	wchar_t *ShowInString();
-
+	const wchar_t *GetString();
 	PARAM *Get(const wchar_t *name);
-
 //очищает стек параметров
 	void Clear();
 };
@@ -172,7 +168,7 @@ class FUNC
 	inline wchar_t *GetParams(){return prms_format;}
 	inline func_ptr GetPointer(){return ptr;}
 //вызывает функцию, возвращает 1 в случае успеха
-	inline void Call(void *e_ptr){ptr(e_ptr);}
+	int Call(void *e_ptr);
 //преобразует возвращаемое значение ф-ии name в строку и возвращает указатель на нее
 //в случае ошибки возвращает NULL
 	inline wchar_t *GetResult(){return return_val;}
@@ -185,6 +181,7 @@ class FUNCSTACK
 {
   private:
 	std::vector<FUNC*> Stack;
+	std::wstring FStrBuffer;
 
 //ищет ф-ю в стеке, возвращает ее индекс
 //возвращает -1 в случае неудачи
@@ -197,28 +194,15 @@ class FUNCSTACK
 //возвращает количество функций в стеке
 	inline UINT CountFuncs(){return Stack.size();};
 
-//возвращает указатель на свойства функции с индексом st_ind из стека
-//в случае ошибки возвращает NULL
-	inline FUNC *Get(UINT st_ind)
-	{
-	  if (st_ind >= Stack.size())
-		return NULL;
-	  else
-		return Stack[st_ind];
-	};
-
 //возвращает указатель на свойства функции name из стека
 //в случае ошибки возвращает NULL
 	FUNC *Get(const wchar_t *fname);
-
 //добавляет ф-ю в стек
 	void Add(const wchar_t *name, const wchar_t *params, func_ptr fptr);
-
 //удаляет ф-ю из стека
 	void Delete(const wchar_t *name);
-
 //возвращает форматированную строку со списком всех ф-й
-	wchar_t *ShowInString();
+	const wchar_t *GetString();
 };
 //-------------------------------------------------------------------------------
 
@@ -265,6 +249,7 @@ class VARSTACK
 	std::vector<VARIABLE> stMain;
     std::vector<float> stNum;
 	std::vector<std::wstring> stStr;
+	std::wstring FStrBuffer;
 
   public:
     inline VARSTACK(){};
@@ -277,7 +262,7 @@ class VARSTACK
 	bool Add(wchar_t *name, std::wstring val);
 	bool Add(wchar_t *name, float val);
 	bool Remove(const wchar_t *name);
-	const wchar_t *ShowInString();
+	const wchar_t *GetString();
 
 	inline void ClearStack()
 	{
@@ -286,10 +271,10 @@ class VARSTACK
 	  stStr.clear();
 	}
 
-	inline float GetNumElement(VARIABLE *var){return stNum[var->ind];}
-	inline void SetNumElement(VARIABLE *var, float val){stNum[var->ind] = val;}
-	inline std::wstring GetStrElement(VARIABLE *var){return stStr[var->ind];}
-	inline void SetStrElement(VARIABLE *var, std::wstring val){stStr[var->ind] = val;}
+	float GetNumElement(VARIABLE *var);
+	void SetNumElement(VARIABLE *var, float val);
+	std::wstring GetStrElement(VARIABLE *var);
+	void SetStrElement(VARIABLE *var, std::wstring val);
 };
 //-------------------------------------------------------------------------------
 
@@ -314,6 +299,7 @@ class FRAGMENTCODE
 	SCRIPTLINES FCode;
 	std::wstring FMark;
 	bool FGlobal;
+	std::wstring FStrBuffer;
 
   public:
 	FRAGMENTCODE(const wchar_t *mark, SCRIPTLINES *code, bool global);
@@ -327,7 +313,7 @@ class FRAGMENTCODE
 	inline bool IsGlobal(){return FGlobal;}
 	inline SCRIPTLINES *GetCode(){return &FCode;};
 
-	const wchar_t *GetCodeStrings();
+	const wchar_t *GetString();
 };
 //-------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------
@@ -336,6 +322,7 @@ class FRAGMENTSTACK
 {
   private:
 	std::vector<FRAGMENTCODE*> FStack;
+    std::wstring FStrBuffer;
 
 	inline int GetSize(){return FStack.size();}
 
@@ -350,7 +337,7 @@ class FRAGMENTSTACK
 	SCRIPTLINES *GetFragmentCode(std::wstring mark);
 	FRAGMENTCODE *Get(std::wstring mark);
 	void ClearFragments(bool all);
-	const wchar_t *ShowInString();
+	const wchar_t *GetString();
 
 	__property FRAGMENTCODE *Fragments[int ind] = {read = ReadFragments};
 	__property int Count = {read = GetSize};

@@ -43,7 +43,8 @@ class ELIScript
 	bool ConnectELI();
 	bool ReleaseELI();
 
-    void Prepare();
+	void Prepare();
+    inline void AddToLog(const String &rec){FLog += rec; FLog += "\r\n";}
 
   public:
     ELIScript();
@@ -58,8 +59,8 @@ class ELIScript
 	__property String InterpreterPath = {read = FELIPath, write = FELIPath};
     __property String Params = {read = FParams, write = FParams};
 	__property String Text = {read = FText, write = FText};
-	__property String Result = {read = FResult, write = FResult};
-	__property String Log = {read = FLog, write = FLog};
+	__property String Result = {read = FResult};
+	__property String Log = {read = FLog};
 	__property ELI_INTERFACE *Interpreter = {read = FEIface};
 	__property bool SaveLogInFile = {read = FSaveLogInFile, write = FSaveLogInFile};
     __property bool Initialised = {read = FInit, write = FInit};

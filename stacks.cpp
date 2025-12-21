@@ -74,8 +74,8 @@ int RESOURCESTACK::Add(RESOURCE newres)
        next_id++;
      }
   catch(Exception &e)
-     {
-	   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::Add: " + e.ToString());
 
        return 0;
      }
@@ -104,48 +104,44 @@ int RESOURCESTACK::Delete(std::wstring ObjectCathegory,
 						  std::wstring ObjectID,
 						  std::wstring ResourceID)
 {
-  std::vector<CONDITION> conds;
-  CONDITION cond;
+  try
+	 {
+	   std::vector<CONDITION> conds;
 
 //создадим условия
-  if (ObjectCathegory != L"")
-    {
-      cond.type = obj_cath;
-      cond.value = ObjectCathegory;
-      conds.push_back(cond);
-    }
+	   if (ObjectCathegory != L"")
+		 conds.push_back({obj_cath, ObjectCathegory});
 
-  if (ObjectID != L"")
-    {
-      cond.type = obj_id;
-      cond.value = ObjectID;
-      conds.push_back(cond);
-    }
+	   if (ObjectID != L"")
+		 conds.push_back({obj_id, ObjectID});
 
-  if (ResourceID != L"")
-    {
-      cond.type = prop_id;
-      cond.value = ResourceID;
-      conds.push_back(cond);
-    }
+	   if (ResourceID != L"")
+		 conds.push_back({prop_id, ResourceID});
 
 //найдем соотв. условиям набор свойств
-  RESRECORDSET rs = Get(&conds);
-  std::vector<int> inds;
+	   RESRECORDSET rs = Get(&conds);
+	   std::vector<int> inds;
 
-  if (rs.size() == 0)
-    return 0;
+	   if (rs.size() == 0)
+		 throw Exception("No matching results");
 
-  for (auto itm : rs)
-	inds.push_back(itm->Index);
+	   for (auto itm : rs)
+		  inds.push_back(itm->Index);
 
-  for (auto itm : inds)
-	{
-	  if (Delete(itm) < 1)
-        return -1;
-    }
+	   for (auto itm : inds)
+		  {
+			if (Delete(itm) < 1)
+			  return -1;
+		  }
 
-  Compact();
+	   Compact();
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::Delete: " + e.ToString());
+
+	   return 0;
+	 }
 
   return 1;
 }
@@ -155,15 +151,24 @@ RESRECORDSET RESOURCESTACK::Get(std::vector<CONDITION> *conditions)
 {
   RESRECORDSET result;
 
-  if (conditions->size() > 1)
-    {
-      result = SelectRes(conditions->at(0));
+  try
+	 {
+	   if (conditions->size() > 1)
+		 {
+		   result = SelectRes(conditions->at(0));
 
-      for (UINT i = 1; i < conditions->size(); i++)
-		result = Aquire(result, conditions->at(i));
-    }
-  else
-    result = SelectRes(conditions->at(0));
+		   for (UINT i = 1; i < conditions->size(); i++)
+			  result = Aquire(result, conditions->at(i));
+		 }
+		else
+		  result = SelectRes(conditions->at(0));
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::Get: " + e.ToString());
+
+	   result.clear();
+	 }
 
   return result;
 }
@@ -171,45 +176,40 @@ RESRECORDSET RESOURCESTACK::Get(std::vector<CONDITION> *conditions)
 
 RESRECORDSET RESOURCESTACK::Get(UINT type, std::wstring val)
 {
-  CONDITION cond;
-
-  cond.type = type;
-  cond.value = val;
-
-  return SelectRes(cond);
+  return SelectRes({type, val});
 }
 //-------------------------------------------------------------------------------
 
-std::vector<int> *RESOURCESTACK::Get(UINT type, const wchar_t *val)
+std::vector<int> RESOURCESTACK::Get(UINT type, const wchar_t *val)
 {
-  CONDITION cond;
+  std::vector<int> res;
 
-  cond.type = type;
-  cond.value = val;
+  try
+	 {
+	   res.clear();
 
-  static std::vector<int> res;
-  res.clear();
+	   RESRECORDSET rs = SelectRes({type, val});
 
-  RESRECORDSET rs = SelectRes(cond);
+	   for (UINT i = 0; i < rs.size(); i++)
+		  res.push_back(rs[i]->Index);
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::Get: " + e.ToString());
 
-  for (UINT i = 0; i < rs.size(); i++)
-     res.push_back(rs[i]->Index);
+       res.clear();
+	 }
 
-  return &res;
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 RESRECORDSET RESOURCESTACK::Get(std::wstring obj_name, std::wstring prop_name)
 {
   std::vector<CONDITION> conds;
-  CONDITION cond;
 
-  cond.type = obj_id;
-  cond.value = obj_name;
-  conds.push_back(cond);
-  cond.type = prop_id;
-  cond.value = prop_name;
-  conds.push_back(cond);
+  conds.push_back({obj_id, obj_name});
+  conds.push_back({prop_id, prop_name});
 
   return Get(&conds);
 }
@@ -219,91 +219,100 @@ RESRECORDSET RESOURCESTACK::SelectRes(CONDITION cond)
 {
   RESRECORDSET result;
 
-  switch (cond.type)
-	{
-	  case indx:
-		{
-		  UINT intval;
+  try
+	 {
+	   switch (cond.type)
+		 {
+		   case indx:
+			 {
+			   UINT intval;
 
-		  try
-			 {
-			   intval = _wtoi(cond.value.c_str());
-			 }
-		  catch (Exception &e)
-			 {
-			   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
+			   try
+				  {
+					intval = _wtoi(cond.value.c_str());
+				  }
+			   catch (Exception &e)
+				  {
+					throw e;
+					break;
+				  }
+
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].Index == intval)
+					  result.push_back(&Stack[i]);
+				  }
+
 			   break;
 			 }
-
-		  for (int i = 0; i < Stack.size(); i++)
+		   case obj_cath:
 			 {
-			   if (Stack[i].Index == intval)
-				 result.push_back(&Stack[i]);
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].ObjectCathegory == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
+
+			   break;
 			 }
+		   case obj_id:
+			 {
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].ObjectID == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
+
+			   break;
+			 }
+		   case prop_id:
+			 {
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].PropertyID == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
+
+			   break;
+			 }
+		   case val_v:
+			 {
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].Value == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
+
+			   break;
+			 }
+		   case is_keep:
+			 {
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].KeepInStack == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
+
+			   break;
+			 }
+		   case is_save:
+			 {
+			   for (int i = 0; i < Stack.size(); i++)
+				  {
+					if (Stack[i].SaveInFile == cond.value)
+					  result.push_back(&Stack[i]);
+				  }
 
 		  break;
-		}
-      case obj_cath:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].ObjectCathegory == cond.value)
-				 result.push_back(&Stack[i]);
 			 }
+		 }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::SelectRes: " + e.ToString());
 
-		  break;
-		}
-      case obj_id:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].ObjectID == cond.value)
-				 result.push_back(&Stack[i]);
-			 }
-
-		  break;
-		}
-      case prop_id:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].PropertyID == cond.value)
-				 result.push_back(&Stack[i]);
-			 }
-
-		  break;
-		}
-      case val_v:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].Value == cond.value)
-				 result.push_back(&Stack[i]);
-			 }
-
-		  break;
-		}
-      case is_keep:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].KeepInStack == cond.value)
-				 result.push_back(&Stack[i]);
-			 }
-
-		  break;
-		}
-      case is_save:
-		{
-		  for (int i = 0; i < Stack.size(); i++)
-			 {
-			   if (Stack[i].SaveInFile == cond.value)
-				 result.push_back(&Stack[i]);
-			 }
-
-		  break;
-		}
-    }
+	   result.clear();
+	 }
 
   return result;
 }
@@ -405,132 +414,119 @@ RESRECORDSET RESOURCESTACK::Aquire(RESRECORDSET source, CONDITION cond)
 
 int RESOURCESTACK::CreateResFile(const wchar_t *filepath, bool overwrite)
 {
-  std::wofstream fout; //создаем объект потоковой записи
-
-  if (!overwrite)
-    fout.open(AnsiOf(filepath), std::ios_base::trunc); //открываем файл для дозаписи
-  else
-    fout.open(AnsiOf(filepath));
-
-  if (!fout.is_open())
-    return -1;
-  else
-    {
-//пишем инфу в файл
-	  StrList *vecExp = ExportStrings();
-
-      try
-         {
-		   for (auto itm : *vecExp)
-			 fout << itm.c_str();
-         }
-	  catch (Exception &e)
-         {
-		   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
-         }
-
-      fout.close();
-
-      return 1;
-    }
+  return CreateResFile(filepath, L"", overwrite);
 }
 //-------------------------------------------------------------------------------
 
-int RESOURCESTACK::CreateResFile(const wchar_t *filepath, const wchar_t *res_cath)
+int RESOURCESTACK::CreateResFile(const wchar_t *filepath, const wchar_t *res_cath, bool overwrite)
 {
-  std::wofstream fout; //создаем объект потоковой записи
+  int res = 0;
 
-  fout.open(AnsiOf(filepath), std::ios_base::trunc); //открываем файл для дозаписи
+  try
+	 {
+	   std::wofstream fout; //создаем объект потоковой записи
 
-  if (!fout.is_open())
-    return -1;
-  else
-    {
+	   if (!overwrite)
+		 fout.open(AnsiOf(filepath), std::ios_base::trunc); //открываем файл для дозаписи
+	   else
+		 fout.open(AnsiOf(filepath));
+
+	   if (!fout.is_open())
+		 throw Exception("Error opening file: " + String(filepath));
+
 //пишем инфу в файл
-      StrList *vecExp = ExportStrings(res_cath);
+	   StrList *vecExp;
 
-      try
-		 {
-		   for (auto itm : *vecExp)
-			 fout << itm.c_str();
-         }
-	  catch (Exception &e)
-         {
-		   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
-         }
+	   if (wcscmp(res_cath, L"") == 0)
+		 vecExp = ExportStrings();
+	   else
+		 vecExp = ExportStrings(res_cath);
 
-      fout.close();
+	   for (auto itm : *vecExp)
+		 fout << itm.c_str();
 
-      return 1;
-	}
+	   fout.close();
+
+	   res = 1;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::CreateResFile: " + e.ToString());
+
+	   res = 0;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 int RESOURCESTACK::LoadResFile(const wchar_t *filepath)
 {
-  std::wifstream fin; //создаем объект потокового чтения
+  int res = 0;
 
-  fin.open(AnsiOf(filepath)); //открываем файл
+  try
+	 {
+	   std::wifstream fin; //создаем объект потокового чтения
 
-  if (!fin.is_open())
-    return -1;
-  else
-    {
-      String impstr;
-      wchar_t buf[MAXBUF];
-      StrList fields;
-      RESOURCE res;
+	   fin.open(AnsiOf(filepath)); //открываем файл
 
-      while (!fin.eof())
-        {
-          try
-             {
-               fin.getline(buf, sizeof(fin)); //получаем строку из файла
-             }
-		  catch (Exception &e)
-             {
-			   SaveLogToUserFolder("ELI.log", "ELI", e.ToString());
-             }
+	   if (!fin.is_open())
+		 throw Exception("Error opening file: " + String(filepath));
+
+	   String impstr;
+	   wchar_t buf[MAXBUF];
+	   StrList fields;
+
+	   while (!fin.eof())
+		 {
+		   fin.getline(buf, sizeof(fin)); //получаем строку из файла
 
 //разбиваем на части по символу разделителю
-		  StrToListW(&fields, std::wstring(buf), FIELDSDELIM, NODELIMEND);
+		   StrToListW(&fields, std::wstring(buf), FIELDSDELIM, NODELIMEND);
 
-          if (fields.size() < SAVEFIELDCOUNT)
-            break;
+		   if (fields.size() < SAVEFIELDCOUNT)
+			 break;
 
-//заполняем поля по умолчанию
-          res.KeepInStack = YES;
-          res.SaveInFile = YES;
- //заполняем оставшиеся поля из файла
-          res.ObjectCathegory = fields[0];
-          res.ObjectID = fields[1];
-          res.PropertyID = fields[2];
-          res.Value = fields[3];
 //добавляем ресурс в стек
-          Add(res);
-        }
+		   Add({0, fields[0], fields[1], fields[2], fields[3], YES, YES});
+		 }
 
-      fin.close();
+	   fin.close();
 
-      return 1;
-	}
+	   res = 1;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::LoadResFile: " + e.ToString());
+
+	   res = 0;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 void RESOURCESTACK::Compact()
 {
-  UINT ind = 0;
+  try
+	 {
+	   UINT ind = 0;
 
-  while (ind < Stack.size())
-    {
-      if (Stack[ind].KeepInStack == NO)
-        {
-          Stack.erase(Stack.begin() + ind);
-          ind = 0;
-        }
-      else
-        ind++;
-    }
+	   while (ind < Stack.size())
+		 {
+		   if (Stack[ind].KeepInStack == NO)
+			 {
+			   Stack.erase(Stack.begin() + ind);
+			   ind = 0;
+			 }
+		   else
+			 ind++;
+		 }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::Compact: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
@@ -543,86 +539,86 @@ void RESOURCESTACK::Clear()
 
 StrList *RESOURCESTACK::ExportStrings()
 {
-  static StrList explist;
-  explist.clear();
-
-  for (auto itm : Stack)
-    {
-	  if (itm.SaveInFile == YES)
-        {
-		  std::wstring str = itm.ObjectCathegory +
-							 FIELDSDELIM +
-							 itm.ObjectID +
-							 FIELDSDELIM +
-							 itm.PropertyID +
-							 FIELDSDELIM +
-							 itm.Value +
-							 L"\r\n";
-
-           explist.push_back(str);
-        }
-    }
-
-  return &explist;
+  return ExportStrings(L"");
 }
 //-------------------------------------------------------------------------------
 
 StrList *RESOURCESTACK::ExportStrings(std::wstring cath)
 {
-  static StrList explist;
-  explist.clear();
-  std::wstring str;
+  FExportData.clear();
 
-  for (auto itm : Stack)
-    {
-	  if (itm.ObjectCathegory == cath)
-        {
-		  str = itm.ObjectCathegory +
-                FIELDSDELIM +
-				itm.ObjectID +
-                FIELDSDELIM +
-				itm.PropertyID +
-                FIELDSDELIM +
-				itm.Value +
-				L"\r\n";
+  try
+	 {
+	   std::wstring str;
 
-           explist.push_back(str);
-        }
-    }
+	   RESRECORDSET res = SelectRes({is_save, YES});
 
-  return &explist;
+	   if (cath != L"")
+		 res = Aquire(res, {obj_cath, cath});
+
+	   for (auto itm : res)
+		  {
+			str = itm->ObjectCathegory +
+				  FIELDSDELIM +
+				  itm->ObjectID +
+				  FIELDSDELIM +
+				  itm->PropertyID +
+				  FIELDSDELIM +
+				  itm->Value +
+				  L"\r\n";
+
+			FExportData.push_back(str);
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::ExportStrings: " + e.ToString());
+
+	   FExportData.clear();
+	 }
+
+  return &FExportData;
 }
 //-------------------------------------------------------------------------------
 
-const wchar_t *RESOURCESTACK::StackInString()
+const wchar_t *RESOURCESTACK::GetString()
 {
   wchar_t ind[NUMSIZE];
-  static std::wstring str;
-  str = L"";
 
-  for (auto itm : Stack)
-    {
-	  swprintf(ind, L"[%d] ", itm.Index);
+  FStrBuffer = L"";
 
-	  str += std::wstring(ind) +
-			 itm.ObjectCathegory +
-			 FIELDSDELIM +
-			 itm.ObjectID +
-			 FIELDSDELIM +
-			 itm.PropertyID +
-			 FIELDSDELIM +
-			 itm.Value +
-			 FIELDSDELIM +
-			 L"Keep=" + itm.KeepInStack +
-			 FIELDSDELIM +
-			 L"Save=" + itm.SaveInFile +
-			 L"\r\n";
-    }
+  try
+	 {
+	   for (auto itm : Stack)
+		  {
+			swprintf(ind, L"[%d] ", itm.Index);
 
-  if (Stack.size() == 0)
-    str = L"<empty>\r\n";
+			FStrBuffer += std::wstring(ind) +
+					   itm.ObjectCathegory +
+					   FIELDSDELIM +
+					   itm.ObjectID +
+					   FIELDSDELIM +
+					   itm.PropertyID +
+					   FIELDSDELIM +
+					   itm.Value +
+					   FIELDSDELIM +
+					   L"Keep=" + itm.KeepInStack +
+					   FIELDSDELIM +
+					   L"Save=" + itm.SaveInFile +
+					   L"\r\n";
+		  }
 
-  return str.c_str();
+	   if (Stack.empty())
+		 FStrBuffer = L"<empty>\r\n";
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "RESOURCESTACK::GetString: " + e.ToString());
+
+	   FStrBuffer = L"<error>\r\n";
+	 }
+
+  return FStrBuffer.c_str();
 }
 //-------------------------------------------------------------------------------
 
@@ -636,49 +632,117 @@ PARAM::PARAM(const wchar_t* p_name, const wchar_t *p_value)
 //преобразует параметр в integer и возвращает его
 int PARAM::ToInt()
 {
-  UINT pos = val.find(L".");
+  int res = 0;
 
-  if (pos != std::wstring::npos)
-	val.erase(pos, val.length() - pos);
+  try
+	 {
+	   UINT pos = val.find(L".");
 
-  return _wtoi(val.c_str());
+	   if (pos != std::wstring::npos)
+		 val.erase(pos, val.length() - pos);
+
+	   res = _wtoi(val.c_str());
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAM::ToInt: " + e.ToString());
+
+	   res = 0;
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+//преобразует параметр в float и возвращает его
+float PARAM::ToFloat()
+{
+  float res = 0;
+
+  try
+	 {
+	   res = _wtof(val.c_str());
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAM::ToFloat: " + e.ToString());
+
+	   res = 0;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 //добавляет параметр в конец стека
 void PARAMSTACK::Add(const wchar_t *name, const wchar_t *val)
 {
-  int ind = GetParamInd(name);
+  try
+	 {
+	   int ind = GetInd(name);
 
-  if (ind < 0)
-	Stack.push_back(new PARAM(name, val));
-  else
-	Stack[ind]->Set(val);
+	   if (ind < 0)
+		 Stack.push_back(new PARAM(name, val));
+	   else
+		 Stack[ind]->Set(val);
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::Add: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
 //возвращает форматированную строку со списком всех ф-й
-wchar_t *PARAMSTACK::ShowInString()
+const wchar_t *PARAMSTACK::GetString()
 {
-  static wchar_t output[STRBUFSTACK];
-  UINT cnt = 0;
+  wchar_t frmt[STRBUFSTACK];
+  FStrBuffer = L"";
 
-  for (int i = 0; i < Stack.size(); i++)
-	cnt += swprintf(output + cnt, L"[%d] %s = %s\r\n",
-					i, Stack[i]->name.c_str(), Stack[i]->ToStr());
+  try
+	 {
+	   UINT cnt = 0;
 
-  return output;
+	   for (int i = 0; i < Stack.size(); i++)
+		  {
+			swprintf(frmt, L"[%d] %s = %s\r\n", i, Stack[i]->name.c_str(), Stack[i]->ToStr());
+			FStrBuffer.append(frmt);
+		  }
+
+	   if (Stack.empty())
+		 FStrBuffer = L"<empty>\r\n";
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::ShowInString: " + e.ToString());
+
+	   FStrBuffer = L"<error>\r\n";
+	 }
+
+  return FStrBuffer.c_str();
 }
 //-------------------------------------------------------------------------------
 
 PARAM *PARAMSTACK::Get(const wchar_t *name)
 {
-  int ind = GetParamInd(name);
+  PARAM *res = nullptr;
 
-  if (ind < 0)
-	return NULL;
-  else
-	return Stack[ind];
+  try
+	 {
+	   int ind = GetInd(name);
+
+	   if (ind >= 0)
+		 res = Stack[ind];
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::Get: " + String(name));
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::Get: " + e.ToString());
+
+	   res = nullptr;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -697,13 +761,21 @@ void PARAMSTACK::Clear()
 
 //ищет параметр в стеке по имени и возвращает индекс
 //-1 - не найдено
-int PARAMSTACK::GetParamInd(const wchar_t *name)
+int PARAMSTACK::GetInd(const wchar_t *name)
 {
-  for (int i = 0; i < Stack.size(); i++)
-	{
-	  if (0 == _wcsicmp(Stack[i]->name.c_str(), name))
-		return i;
-	}
+  try
+	 {
+	   for (int i = 0; i < Stack.size(); i++)
+		  {
+			if (0 == _wcsicmp(Stack[i]->name.c_str(), name))
+			  return i;
+		  }
+	 }
+  catch(Exception &e)
+	 {
+       SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::GetInd: " + String(name));
+	   SaveLogToUserFolder("ELI.log", "ELI", "PARAMSTACK::GetInd: " + e.ToString());
+	 }
 
   return -1;
 }
@@ -714,6 +786,7 @@ FUNC::FUNC(const wchar_t *name, const wchar_t *params, func_ptr fptr)
   this->name = new wchar_t[FNAMESIZE];
   this->prms_format = new wchar_t[CHARSIZE];
   return_val = new wchar_t[CHARSIZE];
+
   wcscpy(this->name, name);
   this->ptr = fptr;
   wcscpy(this->prms_format, params);
@@ -729,6 +802,28 @@ FUNC::~FUNC()
   delete [] return_val;
   return_val = NULL;
   ptr = NULL;
+}
+//-------------------------------------------------------------------------------
+
+//вызывает функцию, возвращает 1 в случае успеха
+int FUNC::Call(void *e_ptr)
+{
+  int res = 0;
+
+  try
+	 {
+	   ptr(e_ptr);
+
+	   res = 1;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNC::Call: " + e.ToString());
+
+	   res = 0;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -748,11 +843,19 @@ FUNCSTACK::~FUNCSTACK()
 //возвращает -1 в случае неудачи
 int FUNCSTACK::GetInd(const wchar_t *fname)
 {
-  for (int i = 0; i < Stack.size(); i++)
-    {
-	  if (0 == _wcsicmp(Stack[i]->GetName(), fname))
-		return i;
-	}
+  try
+	 {
+	   for (int i = 0; i < Stack.size(); i++)
+		  {
+			if (_wcsicmp(Stack[i]->GetName(), fname) == 0)
+			  return i;
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::GetInd: " + String(fname));
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::GetInd: " + e.ToString());
+	 }
 
   return -1;
 }
@@ -762,21 +865,41 @@ int FUNCSTACK::GetInd(const wchar_t *fname)
 //в случае ошибки возвращает NULL
 FUNC *FUNCSTACK::Get(const wchar_t *fname)
 {
-  for (int i = 0; i < Stack.size(); i++)
-	{
-	  if (0 == _wcsicmp(Stack[i]->GetName(), fname))
-		return Stack[i];
-	}
+  FUNC *res = nullptr;
 
-  return NULL;
+  try
+	 {
+	   int ind = GetInd(fname);
+
+	   if (ind >= 0)
+		 res = Stack[ind];
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::Get: " + String(fname));
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::Get: " + e.ToString());
+
+	   res = nullptr;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 //добавляет ф-ю в стек
 void FUNCSTACK::Add(const wchar_t *name, const wchar_t *params, func_ptr fptr)
 {
-  if (!Get(name))
-	Stack.push_back(new FUNC(name, params, fptr));
+  try
+	 {
+	   if (Get(name))
+		 throw Exception("Function with name " + String(name) + " already exists");
+
+	   Stack.push_back(new FUNC(name, params, fptr));
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::Add: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
@@ -795,146 +918,221 @@ void FUNCSTACK::Delete(const wchar_t *name)
 //-------------------------------------------------------------------------------
 
 //возвращает форматированную строку со списком всех ф-й
-wchar_t *FUNCSTACK::ShowInString()
+const wchar_t *FUNCSTACK::GetString()
 {
-  static wchar_t output[STRBUFSTACK];
-  UINT cnt = 0;
+  wchar_t frmt[STRBUFSTACK];
+  FStrBuffer = L"";
 
-  for (int i = 0; i < Stack.size(); i++)
-	{
-	  cnt += swprintf(output + cnt, L"[%d] %s(%s), ptr = %d\r\n",
-									i,
-									Stack[i]->GetName(),
-									Stack[i]->GetParams(),
-									(int)Stack[i]->GetPointer());
-	}
+  try
+	 {
+	   UINT cnt = 0;
 
-  return output;
+	   for (int i = 0; i < Stack.size(); i++)
+		  {
+			swprintf(frmt,
+					 L"[%d] %s(%s), ptr = %d\r\n",
+					 i,
+					 Stack[i]->GetName(),
+					 Stack[i]->GetParams(),
+					 reinterpret_cast<int>(Stack[i]->GetPointer()));
+
+			FStrBuffer.append(frmt);
+		  }
+
+	   if (Stack.empty())
+		 FStrBuffer = L"<empty>\r\n";
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FUNCSTACK::ShowInString: " + e.ToString());
+
+	   FStrBuffer = L"<error>\r\n";
+	 }
+
+  return FStrBuffer.c_str();
 }
 //-------------------------------------------------------------------------------
 
 VARIABLE *VARSTACK::GetFirstFree(UINT type)
 {
-  for (int i = 0; i < stMain.size(); i++)
-	{
-	  if (stMain[i].isfree && stMain[i].type == type)
-		return &stMain[i];
-	}
+  try
+	 {
+	   for (int i = 0; i < stMain.size(); i++)
+		  {
+			if (stMain[i].isfree && stMain[i].type == type)
+			  return &stMain[i];
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::GetFirstFree: " + e.ToString());
+	 }
 
-  return NULL;
+  return nullptr;
 }
 //-------------------------------------------------------------------------------
 
 VARIABLE *VARSTACK::Get(const wchar_t *varname)
 {
-  for (int i = 0; i < stMain.size(); i++)
-	{
-	  if ((0 == wcscmp(stMain[i].varname, varname)) && !stMain[i].isfree)
-		return &stMain[i];
-	}
+  try
+	 {
+	   for (int i = 0; i < stMain.size(); i++)
+		  {
+			if ((0 == wcscmp(stMain[i].varname, varname)) && !stMain[i].isfree)
+			  return &stMain[i];
+		  }
+	 }
+  catch(Exception &e)
+	 {
+       SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::Get: " + String(varname));
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::Get: " + e.ToString());
+	 }
 
-  return NULL;
+  return nullptr;
 }
 //-------------------------------------------------------------------------------
 
 VARIABLE *VARSTACK::GetByValue(std::wstring val)
 {
-  for (UINT i = 0; i < stStr.size(); i++)
-    {
-	  if (stStr.at(i) == val)
-        {
-		  for (int j = 0; j < stMain.size(); j++)
-            {
-			  if ((stMain[j].ind == i) && (2 == stMain[j].type))
-				return &stMain[j];
-			}
-		}
-    }
+  try
+	 {
+	   for (UINT i = 0; i < stStr.size(); i++)
+		  {
+			if (stStr.at(i) == val)
+			  {
+				for (int j = 0; j < stMain.size(); j++)
+				   {
+					 if ((stMain[j].ind == i) && (stMain[j].type == SCSTR))
+					   return &stMain[j];
+				   }
+			  }
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::GetByValue: " + e.ToString());
 
-  return NULL;
+	   return nullptr;
+	 }
+
+  return nullptr;
 }
 //-------------------------------------------------------------------------------
 
 VARIABLE *VARSTACK::GetByValue(float val)
 {
-  for (UINT i = 0; i < stNum.size(); i++)
-    {
-	  if (stNum.at(i) == val)
-        {
-		  for (int j = 0; j < stMain.size(); j++)
-			{
-			  if (stMain[j].ind == i)
-				return &stMain[j];
-            }
-        }
-    }
+  try
+	 {
+	   for (UINT i = 0; i < stNum.size(); i++)
+		  {
+			if (stNum.at(i) == val)
+			  {
+				for (int j = 0; j < stMain.size(); j++)
+				   {
+					 if (stMain[j].ind == i)
+					   return &stMain[j];
+				   }
+			  }
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::GetByValue: " + e.ToString());
 
-  return NULL;
+	   return nullptr;
+	 }
+
+  return nullptr;
 }
 //-------------------------------------------------------------------------------
 
 bool VARSTACK::Add(wchar_t *name, std::wstring val)
 {
-  if (Get(name)) //элемент с таким именем есть в стеке и не свободен
-	return false;
+  bool res = false;
 
-  VARIABLE *vfree = GetFirstFree(SCSTR);
+  try
+	 {
+	   if (Get(name)) //элемент с таким именем есть в стеке и не свободен
+		 throw Exception("Element with name " + String(name) + " already exists");
 
-  if (vfree) //есть свободные элементы нужного типа
-    {
-	  stStr[vfree->ind] = val;
-	  wcscpy(vfree->varname, name);
-      vfree->isfree = false;
+	   VARIABLE *vfree = GetFirstFree(SCSTR);
 
-      return true;
-    }
-  else
-	{
-	  VARIABLE var;
+	   if (vfree) //есть свободные элементы нужного типа
+		 {
+		   stStr[vfree->ind] = val;
+		   wcscpy(vfree->varname, name);
+		   vfree->isfree = false;
+		 }
+	   else
+		 {
+		   stStr.push_back(val);
+		   UINT ind = stStr.size() - 1; //узнаем индекс элемента в стеке
 
-      stStr.push_back(val);
-      UINT ind = stStr.size() - 1; //узнаем индекс элемента в стеке
-      wcscpy(var.varname, name);
-      var.type = SCSTR;
-	  var.ind = ind;
-	  var.isfree = false;
-	  stMain.push_back(var);
+           VARIABLE var;
 
-      return true;
-    }
+		   wcscpy(var.varname, name);
+		   var.type = SCSTR;
+		   var.ind = ind;
+		   var.isfree = false;
+
+		   stMain.push_back(var);
+		 }
+
+	   res = true;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::Add: " + e.ToString());
+
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 bool VARSTACK::Add(wchar_t *name, float val)
 {
-  if (Get(name)) //элемент с таким именем есть в стеке и не свободен
-    return false;
+  bool res = false;
 
-  VARIABLE *vfree = GetFirstFree(SCNUM);
+  try
+	 {
+	   if (Get(name)) //элемент с таким именем есть в стеке и не свободен
+		 throw Exception("Element with name " + String(name) + " already exists");;
 
-  if (vfree) //есть свободные элементы нужного типа
-    {
-      stNum[vfree->ind] = val;
-      wcscpy(vfree->varname, name);
-      vfree->isfree = false;
+	   VARIABLE *vfree = GetFirstFree(SCNUM);
 
-      return true;
-	}
-  else
-    {
-      VARIABLE var;
+	   if (vfree) //есть свободные элементы нужного типа
+		 {
+		   stNum[vfree->ind] = val;
+		   wcscpy(vfree->varname, name);
+		   vfree->isfree = false;
+		 }
+	   else
+		 {
+		   stNum.push_back(val);
+		   UINT ind = stNum.size() - 1; //узнаем индекс элемента в стеке
 
-	  stNum.push_back(val);
-      UINT ind = stNum.size() - 1; //узнаем индекс элемента в стеке
-	  wcscpy(var.varname, name);
-      var.type = SCNUM;
-      var.ind = ind;
-	  var.isfree = false;
+		   VARIABLE var;
 
-      stMain.push_back(var);
+		   wcscpy(var.varname, name);
+		   var.type = SCNUM;
+		   var.ind = ind;
+		   var.isfree = false;
 
-	  return true;
-    }
+		   stMain.push_back(var);
+		 }
+
+	   res = true;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::Add: " + e.ToString());
+
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -954,32 +1152,108 @@ bool VARSTACK::Remove(const wchar_t *name)
 }
 //-------------------------------------------------------------------------------
 
-const wchar_t *VARSTACK::ShowInString()
+const wchar_t *VARSTACK::GetString()
 {
   wchar_t frmt[512];
-  static std::wstring res;
-  res = L"";
   wchar_t out[4096];
 
-  wcscpy(frmt, L"[%d] Stack[%d] %s %s = ");
-  wcscat(frmt, FRMTNUM);
-  wcscat(frmt, L"\r\n");
+  FStrBuffer = L"";
 
-  for (int i = 0; i < stMain.size(); i++)
-     {
-	   if (!stMain[i].isfree)
-         {
-		   if (SCNUM == stMain[i].type)
-			 swprintf(out, frmt, i, stMain[i].ind, NUMTYPE, stMain[i].varname, stNum[stMain[i].ind]);
-		   else if (SCSTR == stMain[i].type)
-			 swprintf(out, L"[%d] Stack[%d] %s %s = %s\r\n",
-					  i, stMain[i].ind, STRTYPE, stMain[i].varname, stStr[stMain[i].ind].c_str());
+  try
+	 {
+	   wcscpy(frmt, L"[%d] Stack[%d] %s %s = ");
+	   wcscat(frmt, FRMTNUM);
+	   wcscat(frmt, L"\r\n");
 
-		   res += out;
-         }
+	   for (int i = 0; i < stMain.size(); i++)
+		  {
+			if (!stMain[i].isfree)
+			  {
+				if (SCNUM == stMain[i].type)
+				  swprintf(out, frmt, i, stMain[i].ind, NUMTYPE, stMain[i].varname, stNum[stMain[i].ind]);
+				else if (SCSTR == stMain[i].type)
+				  swprintf(out, L"[%d] Stack[%d] %s %s = %s\r\n",
+						   i, stMain[i].ind, STRTYPE, stMain[i].varname, stStr[stMain[i].ind].c_str());
+
+				FStrBuffer.append(out);
+			  }
+		  }
+
+	   if (stMain.empty())
+		 FStrBuffer = L"<empty>\r\n";
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::ShowInString: " + e.ToString());
+
+	   FStrBuffer = L"<error>\r\n";
 	 }
 
-  return res.c_str();
+  return FStrBuffer.c_str();
+}
+//-------------------------------------------------------------------------------
+
+float VARSTACK::GetNumElement(VARIABLE *var)
+{
+  float res = 0.0f;
+
+  try
+	 {
+	   res = stNum[var->ind];
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::GetNumElement: " + e.ToString());
+
+	   res = 0.0f;
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+void VARSTACK::SetNumElement(VARIABLE *var, float val)
+{
+  try
+	 {
+	   stNum[var->ind] = val;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::SetNumElement: " + e.ToString());
+	 }
+}
+//-------------------------------------------------------------------------------
+
+std::wstring VARSTACK::GetStrElement(VARIABLE *var)
+{
+  std::wstring res = L"";
+
+  try
+	 {
+	   res = stStr[var->ind];
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::GetStrElement: " + e.ToString());
+
+	   res = L"";
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+void VARSTACK::SetStrElement(VARIABLE *var, std::wstring val)
+{
+  try
+	 {
+	   stStr[var->ind] = val;
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "VARSTACK::SetStrElement: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
@@ -991,70 +1265,101 @@ FRAGMENTCODE::FRAGMENTCODE(const wchar_t *mark, SCRIPTLINES *code, bool global)
 }
 //-------------------------------------------------------------------------------
 
-const wchar_t *FRAGMENTCODE::GetCodeStrings()
+const wchar_t *FRAGMENTCODE::GetString()
 {
-  static String res;
-  res = "";
+  FStrBuffer = L"";
 
   for (auto itm : FCode)
 	 {
-	   res += _wltrim(itm.c_str());
-	   res += L"\r\n";
+	   FStrBuffer.append(_wltrim(itm.c_str()));
+	   FStrBuffer.append(L"\r\n");
 	 }
 
-  return res.c_str();
+  return FStrBuffer.c_str();
 }
  //-------------------------------------------------------------------------------
 
  FRAGMENTCODE *FRAGMENTSTACK::ReadFragments(int ind)
 {
-  if (ind < 0)
-	throw Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
-  else if (ind < FStack.size())
-	return FStack[ind];
-  else
-	throw Exception("FRAGMENTSTACK::Fragments: Out of bounds!");
+  FRAGMENTCODE *res = NULL;
+
+  try
+	 {
+	   if ((ind < 0) || (ind >= FStack.size()))
+		 throw Exception("Out of bounds!");
+
+	   res = FStack[ind];
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::ReadFragments: " + e.ToString());
+
+	   res = nullptr;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 void FRAGMENTSTACK::Add(std::wstring frg_str, std::wstring mark, bool global)
 {
-  FRAGMENTCODE *new_frg = new FRAGMENTCODE();
+  try
+	 {
+	   FRAGMENTCODE *new_frg = new FRAGMENTCODE();
 
-  new_frg->SetMark(mark.c_str());
+	   new_frg->SetMark(mark.c_str());
 
-  if (global)
-	new_frg->SetGlobal();
-  else
-	new_frg->SetLocal();
+	   if (global)
+		 new_frg->SetGlobal();
+	   else
+		 new_frg->SetLocal();
 
-  StrToListW(new_frg->GetCode(), frg_str, ENDLNSTR, DELIMEND);
+	   StrToListW(new_frg->GetCode(), frg_str, ENDLNSTR, DELIMEND);
 
-  FStack.push_back(new_frg);
+	   FStack.push_back(new_frg);
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::Add: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
 void FRAGMENTSTACK::Remove(std::wstring mark)
 {
-  for (UINT i = 0; i < FStack.size(); i++)
-	{
-	  if (wcscmp(mark.c_str(), FStack[i]->GetMark()) == 0)
-		{
-		  delete FStack[i];
-		  FStack[i] = NULL;
-		  FStack.erase(FStack.begin() + i);
-		}
-	}
+  try
+	 {
+	   for (UINT i = 0; i < FStack.size(); i++)
+		  {
+			if (wcscmp(mark.c_str(), FStack[i]->GetMark()) == 0)
+			  {
+				delete FStack[i];
+				FStack[i] = NULL;
+		  		FStack.erase(FStack.begin() + i);
+			  }
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::Remove: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
 SCRIPTLINES *FRAGMENTSTACK::GetFragmentCode(std::wstring mark)
 {
-  for (auto itm : FStack)
-	{
-	  if (wcscmp(mark.c_str(), itm->GetMark()) == 0)
-		return itm->GetCode();
-	}
+  try
+	 {
+	   for (auto itm : FStack)
+		  {
+			if (wcscmp(mark.c_str(), itm->GetMark()) == 0)
+			  return itm->GetCode();
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::GetFragmentCode: " + e.ToString());
+	 }
 
   return NULL;
 }
@@ -1062,11 +1367,19 @@ SCRIPTLINES *FRAGMENTSTACK::GetFragmentCode(std::wstring mark)
 
 FRAGMENTCODE *FRAGMENTSTACK::Get(std::wstring mark)
 {
-  for (auto itm : FStack)
-    {
-	  if (wcscmp(mark.c_str(), itm->GetMark()) == 0)
-		return itm;
-    }
+  try
+	 {
+	   for (auto itm : FStack)
+		  {
+			if (wcscmp(mark.c_str(), itm->GetMark()) == 0)
+			  return itm;
+		  }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::Get: " + String(mark.c_str()));
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::Get: " + e.ToString());
+	 }
 
   return NULL;
 }
@@ -1074,48 +1387,67 @@ FRAGMENTCODE *FRAGMENTSTACK::Get(std::wstring mark)
 
 void FRAGMENTSTACK::ClearFragments(bool all)
 {
-  if (all)
-	{
-	  for (auto itm : FStack)
-        {
-		  delete itm;
-		  itm = NULL;
-        }
+  try
+	 {
+	   if (all)
+		 {
+		   for (auto itm : FStack)
+			  {
+				delete itm;
+				itm = NULL;
+			  }
 
-	  FStack.clear();
-    }
-  else
-	{
-	  for (UINT i = 0; i < FStack.size(); i++)
-        {
-		  if (!FStack[i]->IsGlobal())
-			{
-			  delete FStack[i];
-			  FStack[i] = NULL;
-			  FStack.erase(FStack.begin() + i);
-            }
-		}
-    }
+		   FStack.clear();
+		 }
+	   else
+		 {
+		   for (UINT i = 0; i < FStack.size(); i++)
+			  {
+				if (!FStack[i]->IsGlobal())
+				  {
+					delete FStack[i];
+					FStack[i] = NULL;
+					FStack.erase(FStack.begin() + i);
+				  }
+			  }
+		 }
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::ClearFragments: " + e.ToString());
+	 }
 }
 //-------------------------------------------------------------------------------
 
-const wchar_t *FRAGMENTSTACK::ShowInString()
+const wchar_t *FRAGMENTSTACK::GetString()
 {
   wchar_t frmt[512];
-  static std::wstring res;
-  res = L"";
+  FStrBuffer = L"";
 
-  for (int i = 0; i < FStack.size(); i++)
-     {
-       swprintf(frmt, L"[%d] {%s} GLOBAL = %d TEXT = \r\n%s\r\n",
-			   i,
-			   FStack[i]->GetMark(),
-			   (UINT)FStack[i]->IsGlobal(),
-			   FStack[i]->GetCodeStrings());
+  try
+	 {
+	   for (int i = 0; i < FStack.size(); i++)
+		  {
+			swprintf(frmt, L"[%d] {%s} GLOBAL = %d TEXT = \r\n",
+					 i,
+					 FStack[i]->GetMark(),
+					 (UINT)FStack[i]->IsGlobal());
 
-       res += frmt;
-     }
+			FStrBuffer.append(frmt);
+			FStrBuffer.append(FStack[i]->GetString());
+			FStrBuffer.append(L"\r\n");
+		  }
 
-  return res.c_str();
+	   if (FStack.empty())
+		 FStrBuffer = L"<empty>\r\n";
+	 }
+  catch(Exception &e)
+	 {
+	   SaveLogToUserFolder("ELI.log", "ELI", "FRAGMENTSTACK::GetString: " + e.ToString());
+
+	   FStrBuffer = L"<error>\r\n";
+	 }
+
+  return FStrBuffer.c_str();
 }
 //-------------------------------------------------------------------------------

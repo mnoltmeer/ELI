@@ -41,9 +41,19 @@ ELIScript::ELIScript(const String &interpreter_path)
 ELIScript::ELIScript(ELI_INTERFACE *instance)
 {
   Prepare();
-  FEIface = instance;
+
   FExistInstance = true;
-  FInit = true;
+
+  if (instance)
+	{
+	  FEIface = instance;
+	  FInit = true;
+	}
+  else
+    {
+	  FEIface = nullptr;
+	  FInit = false;
+	}
 }
 //---------------------------------------------------------------------------
 
@@ -58,11 +68,12 @@ bool ELIScript::ConnectELI()
 	{
       try
 		 {
+		   AddToLog("Loading ELI from: " + FELIPath);
 		   FDllHandle = LoadLibrary(FELIPath.c_str());
 		 }
 	  catch (Exception &e)
 		 {
-		   Log = "Error connecting to ELI library";
+		   AddToLog("Error connecting to ELI library");
 		   res = false;
 		 }
 	}
@@ -76,23 +87,23 @@ bool ELIScript::ConnectELI()
 		 }
 	  catch (Exception &e)
 		 {
-		   Log = "ConnectELI: " + e.ToString();
+		   AddToLog("ConnectELI: " + e.ToString());
 		   res = false;
 		 }
 
 	  if (!FGetELI)
 		{
-		  Log = "Error initialisation of GetELIInterface()";
+		  AddToLog("Error initialisation of GetELIInterface()");
 		  res = false;
 		}
 	  else if (!FFreeELI)
 		{
-		  Log = "Error initialisation of FreeELIInterface()";
+		  AddToLog("Error initialisation of FreeELIInterface()");
 		  res = false;
 		}
 	  else if (!FGetELI(&FEIface))
 		{
-		  Log = "Error initialisation of ELI_INTERFACE";
+		  AddToLog("Error initialisation of ELI_INTERFACE");
 		  res = false;
 		}
 	  else
@@ -100,7 +111,7 @@ bool ELIScript::ConnectELI()
 	}
   else
 	{
-      Log = "Error connecting to ELI library";
+	  AddToLog("Error connecting to ELI library");
 	  res = false;
     }
 
@@ -176,15 +187,15 @@ bool ELIScript::Run()
 
   if (Text == "")
 	{
-	  Log = "Empty script text!";
+	  AddToLog("Empty script text!");
 	  res = false;
 	}
   else
 	{
 	  if (FEIface)
 		{
-		  Result = FEIface->RunScript(Text.c_str(), Params.c_str(), FSaveLogInFile);
-		  Log = FEIface->ShowInfoMessages();
+		  FResult = FEIface->RunScript(Text.c_str(), Params.c_str(), FSaveLogInFile);
+		  AddToLog(FEIface->ShowInfoMessages());
 
 		  if (Result != "-err-")
 			res = true;
@@ -192,7 +203,11 @@ bool ELIScript::Run()
 			res = false;
 		}
 	  else
-		res = false;
+		{
+		  AddToLog("ELI not connected!");
+
+		  res = false;
+		}
     }
 
   return res;
