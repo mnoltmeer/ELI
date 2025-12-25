@@ -29,47 +29,49 @@ std::wstring debugfile;
 class ELI: public ELI_INTERFACE
 {
   private:
-    bool write_log;
-    bool debug_eli;
-	bool use_return;
-	std::wstring scrtext; //текст скрипта, с которым будет работать dll
-	UINT CstrInd; //глобальный индекс присваиваемый конст. строкам
-	UINT CnumInd; //глобальний індекс, що призначається числовим константам
-	UINT FrgmntNum; //глобальный индекс нумерации фрагментов кода
-    UINT TmpObjInd; //глобальный индекс нумерации временных объектов
-	std::wstring InfStack; //стек сообщений интерпретатора
-	std::wstring ScriptResult; //значение возвращаемое скриптом
-	bool use_false; //флаг, сообщающий, что нужно использовать секцию else
-	std::wstring current_func_name; //имя текущей вызванной ф-ии
-	std::wstring current_class; //имя текущего объявляемого класса
-	std::wstring return_val; //значение возвращаемое методом
-	bool trigger_check; //флаг, який повідомляє, що відбувається перевірка тригеру
+    bool FWriteLog;
+    bool FDebugMode;
+	bool FReturnUsed;
+	std::wstring FText; //текст скрипта, с которым будет работать dll
+	UINT FCStrInd; //глобальный индекс присваиваемый конст. строкам
+	UINT FCNumInd; //глобальний індекс, що призначається числовим константам
+	UINT FFrgInd; //глобальный индекс нумерации фрагментов кода
+    UINT FTmpObjInd; //глобальный индекс нумерации временных объектов
+	std::wstring FInfStack; //стек сообщений интерпретатора
+	std::wstring FResult; //значение возвращаемое скриптом
+	bool FFalseUsed; //флаг, сообщающий, что нужно использовать секцию else
+	std::wstring FCurrFnName; //имя текущей вызванной ф-ии
+	std::wstring FCurrClassName; //имя текущего объявляемого класса
+	std::wstring FReturnVal; //значение возвращаемое методом
+	bool FTriggerCheck; //флаг, який повідомляє, що відбувається перевірка тригеру
 						//тож не треба писати повідомлення в лог
-	bool settings_change; //флаг що визначає момент, коли код вносить зміни
-						  //у налаштування інтерпретатора
-	SETTINGS InterpreterSettings; //налаштування інтерпретатора
-	std::vector<std::wstring> vecScList; //вектор для хранения строк скрипта
-    FRAGMENTSTACK *frgStack;
-	std::vector<VARSTACK*> vecVSt; //вектор указателей на стеки переменных
-								   //нулевой элемент указывает на глобальный стек
-	std::vector<HINSTANCE> vecLibs; //вектор для дескрипторов внешних библиотек
-	std::vector<EXTFUNC> vecExtFuncs; //вектор со списком импортированных ф-й
-	std::vector<REFERENCE> vecRefs; //вектор со списком ссылок
-	std::vector<TRIGGER> vecTriggers; //вектор з переліком доступних тригерів
+	bool FSettingsChangeMode; //флаг що визначає момент, коли код вносить зміни
+						      //у налаштування інтерпретатора
+	SETTINGS FSettings; //налаштування інтерпретатора
+	std::vector<std::wstring> FScList; //вектор для хранения строк скрипта
+	FRAGMENTSTACK *FFrgStack;
+	std::vector<VARSTACK*> FVSt; //вектор указателей на стеки переменных
+								 //нулевой элемент указывает на глобальный стек
+	std::vector<HMODULE> FLibs; //вектор для дескрипторов внешних библиотек
+	std::vector<EXTFUNC> FExtFuncs; //вектор со списком импортированных ф-й
+	std::vector<REFERENCE> FRefs; //вектор со списком ссылок
+	std::vector<TRIGGER> FTriggers; //вектор з переліком доступних тригерів
 	std::wstring FStrBuffer; //буфер для обміну текстовою інформацією між методами класу
 	SCRIPTLINES FCodeBuffer; //буфер для обміну рядками скрипту
-    float FNumBuffer;
+	float FNumBuffer;
+	std::wstring FLastErr;
+	bool FDebugInFile;
 
 ///стеки для рантайм переменных скрипта
-    VARSTACK *vStack; //стек переменных для скрипта
-    VARSTACK *st; //глобальный указатель для работы со стеками переменных
-                  //может указывать на главный стек или на лок. стек процедуры
-    PARAMSTACK *pStack; //стек параметров для скриптовых ф-й
-    FUNCSTACK *fStack; //стек функций для совместного использования
-    RESOURCESTACK *objStack; //стек ресурсов - свойств объектов, которыми оперирует интерпретатор
-    RESOURCESTACK *clStack; //стек классов
-    RESOURCESTACK *procStack; //стек процедур
-    RESOURCESTACK *tmpObj; //стек временных объектов для объектов-свойств
+	VARSTACK *FVarStack; //стек переменных для скрипта
+	VARSTACK *FCurrentStack; //глобальный указатель для работы со стеками переменных
+							 //может указывать на главный стек или на лок. стек процедуры
+    PARAMSTACK *FPrmStack; //стек параметров для скриптовых ф-й
+    FUNCSTACK *FFnStack; //стек функций для совместного использования
+    RESOURCESTACK *FObjStack; //стек ресурсов - свойств объектов, которыми оперирует интерпретатор
+	RESOURCESTACK *FClStack; //стек классов
+    RESOURCESTACK *FProcStack; //стек процедур
+    RESOURCESTACK *FTmpObjects; //стек временных объектов для объектов-свойств
 
 ///служебные функции
 //начальная инициализация всех ресурсов интерпретатора
@@ -236,9 +238,6 @@ class ELI: public ELI_INTERFACE
 	virtual const wchar_t* __stdcall GetInitDir();
 	virtual void __stdcall AddToLog(const wchar_t *msg);
 
-	std::wstring LastErr;
-    bool debug_in_file;
-
 ///служебные функции
     void WriteLog(const wchar_t *rec);
     void WriteELIDebug(const wchar_t *event, const wchar_t *rec);
@@ -277,17 +276,18 @@ class ELI: public ELI_INTERFACE
 	bool ImportMemberFromObject(std::wstring &obj_name, std::wstring &src_name, std::wstring &mb_name, UINT index);
     bool ImportMemberFromClass(std::wstring &obj_name, std::wstring &cl_name, std::wstring &mb_name, UINT index);
 
-	__property PARAMSTACK *ParamStack = {read = pStack};
-	__property FUNCSTACK *FuncStack = {read = fStack};
-	__property RESOURCESTACK *ObjStack = {read = objStack};
-	__property RESOURCESTACK *ClassStack = {read = clStack};
-	__property RESOURCESTACK *ProcStack = {read = procStack};
-	__property VARSTACK *VarStack = {read = st};
-	__property FRAGMENTSTACK *FragmentStack = {read = frgStack};
-	__property std::vector<EXTFUNC> ExtFnStack = {read = vecExtFuncs};
-	__property bool ReturnEnabled = {read = use_return, write = use_return};
-	__property SETTINGS *Settings = {read = InterpreterSettings};
-	__property std::wstring Result = {read = ScriptResult, write = ScriptResult};
+	__property PARAMSTACK *ParamStack = {read = FPrmStack};
+	__property FUNCSTACK *FuncStack = {read = FFnStack};
+	__property RESOURCESTACK *ObjStack = {read = FObjStack};
+	__property RESOURCESTACK *ClassStack = {read = FClStack};
+	__property RESOURCESTACK *ProcStack = {read = FProcStack};
+	__property VARSTACK *VarStack = {read = FCurrentStack};
+	__property FRAGMENTSTACK *FragmentStack = {read = FFrgStack};
+	__property std::vector<EXTFUNC> ExtFnStack = {read = FExtFuncs};
+	__property bool ReturnEnabled = {read = FReturnUsed, write = FReturnUsed};
+	__property SETTINGS *Settings = {read = FSettings};
+	__property std::wstring Result = {read = FResult, write = FResult};
+	__property std::wstring LastError = {read = FLastErr};
 };
 //-------------------------------------------------------------------------------
 

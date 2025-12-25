@@ -20,6 +20,7 @@ This file is part of Extern Logic Interpreter.
 #ifndef definesH
 #define definesH
 
+#include <wtypes.h>
 #include <vector>
 
 /*! efstring.h copyright 2016-2018 Elsa Fenrich (elsa.fenrich@gmail.com) */
@@ -28,10 +29,6 @@ This file is part of Extern Logic Interpreter.
 #define BUILD_DLL
 
 #include "eli_interface.h"
-
-typedef std::vector<std::wstring> (SCRIPTLINES);
-typedef void (__stdcall *IMPORTFUNC)(void*);
-typedef std::vector<std::wstring> (StrList);
 
 //константы, описывающие системные сообщени€
 extern const wchar_t *INFMSG;
@@ -187,5 +184,99 @@ extern const wchar_t *P_ELI_VER; //верс≥€ ≥нтерпретатора
 extern const wchar_t *P_ELI_PATH; //шл€х до б≥бл≥отеки
 extern const wchar_t *P_ELI_DIR; //робочий каталог
 extern const wchar_t *P_ELI_HANDLE; //дескриптор об'Їкта ELI
+
+typedef std::vector<std::wstring> (SCRIPTLINES);
+typedef void (__stdcall *IMPORTFUNC)(void*);
+typedef std::vector<std::wstring> (StrList);
+
+//константы определ€ющие свойство ресурса
+enum {
+       indx = 0,
+	   obj_cath = 1,
+       obj_id = 2,
+       prop_id = 3,
+	   val_v = 4,
+       is_keep = 5,
+       is_save = 6
+	 };
+
+//структура определ€юща€ параметры дл€ выборки дл€ ф-й SelectRes() и Aquire()
+struct CONDITION
+{
+  UINT type;
+  std::wstring value;
+};
+
+struct RESOURCE
+{
+  UINT Index;                    //индекс
+  std::wstring ObjectCathegory;  //категори€ объекта-владельца
+  std::wstring ObjectID;         //ID объекта-владельца
+  std::wstring PropertyID;       //ID свойства
+  std::wstring Value;            //значение
+  std::wstring KeepInStack;      //хранить ресурс в стеке после компакта
+  std::wstring SaveInFile;       //сохран€ть ли значение ресурса в файл на диске
+};
+
+//определение дл€ набора указателей на ресурсы стека
+typedef std::vector<RESOURCE*> (RESRECORDSET);
+
+//структура описывающа€ ассоциации скриптовых переменных
+//и элементов стеков интерпретатора
+struct VARIABLE
+{
+  wchar_t varname[MAXNAMELEN]; //им€ переменной из скрипта
+  UINT type;                   //тип стека: 1 - num, 2 - sym
+  UINT ind;                    //индекс в стеке
+  bool isfree;                 //признак того действующа€ переменна€ или нет
+};
+//-------------------------------------------------------------------------------
+
+//структура описывающа€ ссылку
+struct REFERENCE
+{
+  wchar_t refname[MAXNAMELEN];
+  wchar_t refobj[CHARSIZE];
+};
+//-------------------------------------------------------------------------------
+
+//структура що описуЇ тригер
+struct TRIGGER
+{
+  wchar_t condition[CHARSIZE]; //$x > 0, &obj.X == 0
+  wchar_t fragment[CHARSIZE];
+};
+//-------------------------------------------------------------------------------
+
+//структура у €к≥й м≥ст€тьс€ налаштуванн€ ≥нтерпретатора дл€ зм≥ни рантайм
+struct SETTINGS
+{
+  bool ParseNumConst; //парсити числов≥ константи перед трансл€ц≥Їю р€дка
+  bool ParseSymConst; //парсити символьн≥ константи перед трансл€ц≥Їю р€дка
+  bool KeepObjects;  //збер≥гати вм≥ст стеку об'Їкт≥в до к≥нц€ роботи ELI
+  bool KeepClasses;  //збер≥гати вм≥ст стеку клас≥в до к≥нц€ роботи ELI
+};
+//-------------------------------------------------------------------------------
+
+struct EXTFUNC
+{
+  wchar_t inname[MAXNAMELEN]; //внутреннее им€
+  HMODULE exthinst;      //дескриптор вн. либы
+};
+
+//структура описывающа€ часть выражени€ (символ операции и аргумент)
+//пример: "+2" -> arg=2;oper='+'
+struct SUBEXP
+{
+  float arg;  //значение аргумента
+  wchar_t oper;  //символ операции
+};
+
+//структура хранит позиции соотв друг другу открывающей и закрывающей скобок
+struct SCPOS
+{
+  int oppos;  //позици€ открывающей скобки
+  int clpos;  //позици€ закрывающей
+};
 
 #endif

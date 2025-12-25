@@ -8,51 +8,19 @@ This file is part of Extern Logic Interpreter.
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
 
-    Extern Logic Interpreter is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	Extern Logic Interpreter is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with Extern Logic Interpreter.  If not, see <http://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with Extern Logic Interpreter.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef stacksH
 #define stacksH
 
 #include "defines.h"
-
-//константы определ€ющие свойство ресурса
-enum {
-       indx = 0,
-       obj_cath = 1,
-       obj_id = 2,
-       prop_id = 3,
-       val_v = 4,
-       is_keep = 5,
-       is_save = 6
-     };
-
-//структура определ€юща€ параметры дл€ выборки дл€ ф-й SelectRes() и Aquire()
-struct CONDITION
-{
-  UINT type;
-  std::wstring value;
-};
-
-struct RESOURCE
-{
-  UINT Index;                    //индекс
-  std::wstring ObjectCathegory;  //категори€ объекта-владельца
-  std::wstring ObjectID;         //ID объекта-владельца
-  std::wstring PropertyID;       //ID свойства
-  std::wstring Value;            //значение
-  std::wstring KeepInStack;      //хранить ресурс в стеке после компакта
-  std::wstring SaveInFile;       //сохран€ть ли значение ресурса в файл на диске
-};
-
-//определение дл€ набора указателей на ресурсы стека
-typedef std::vector<RESOURCE*> (RESRECORDSET);
 
 class RESOURCESTACK
 {
@@ -94,12 +62,6 @@ class RESOURCESTACK
 	int LoadResFile(const wchar_t *filepath);
 	void Compact();
 	void Clear();
-};
-
-struct EXTFUNC
-{
-  wchar_t inname[MAXNAMELEN]; //внутреннее им€
-  HINSTANCE exthinst;      //дескриптор вн. либы
 };
 
 class PARAM
@@ -206,43 +168,6 @@ class FUNCSTACK
 };
 //-------------------------------------------------------------------------------
 
-//структура описывающа€ ассоциации скриптовых переменных
-//и элементов стеков интерпретатора
-struct VARIABLE
-{
-  wchar_t varname[MAXNAMELEN]; //им€ переменной из скрипта
-  UINT type;                   //тип стека: 1 - num, 2 - sym
-  UINT ind;                    //индекс в стеке
-  bool isfree;                 //признак того действующа€ переменна€ или нет
-};
-//-------------------------------------------------------------------------------
-
-//структура описывающа€ ссылку
-struct REFERENCE
-{
-  wchar_t refname[MAXNAMELEN];
-  wchar_t refobj[CHARSIZE];
-};
-//-------------------------------------------------------------------------------
-
-//структура що описуЇ тригер
-struct TRIGGER
-{
-  wchar_t condition[CHARSIZE]; //$x > 0, &obj.X == 0
-  wchar_t fragment[CHARSIZE];
-};
-//-------------------------------------------------------------------------------
-
-//структура у €к≥й м≥ст€тьс€ налаштуванн€ ≥нтерпретатора дл€ зм≥ни рантайм
-struct SETTINGS
-{
-  bool ParseNumConst; //парсити числов≥ константи перед трансл€ц≥Їю р€дка
-  bool ParseSymConst; //парсити символьн≥ константи перед трансл€ц≥Їю р€дка
-  bool KeepObjects;  //збер≥гати вм≥ст стеку об'Їкт≥в до к≥нц€ роботи ELI
-  bool KeepClasses;  //збер≥гати вм≥ст стеку клас≥в до к≥нц€ роботи ELI
-};
-//-------------------------------------------------------------------------------
-
 class VARSTACK
 {
   private:
@@ -278,21 +203,6 @@ class VARSTACK
 };
 //-------------------------------------------------------------------------------
 
-//структура описывающа€ часть выражени€ (символ операции и аргумент)
-//пример: "+2" -> arg=2;oper='+'
-struct SUBEXP
-{
-  float arg;  //значение аргумента
-  wchar_t oper;  //символ операции
-};
-
-//структура хранит позиции соотв друг другу открывающей и закрывающей скобок
-struct SCPOS
-{
-  int oppos;  //позици€ открывающей скобки
-  int clpos;  //позици€ закрывающей
-};
-
 class FRAGMENTCODE
 {
   private:
@@ -315,7 +225,6 @@ class FRAGMENTCODE
 
 	const wchar_t *GetString();
 };
-//-------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------
 
 class FRAGMENTSTACK
