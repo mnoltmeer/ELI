@@ -158,12 +158,12 @@ class ELI: public ELI_INTERFACE
 	bool ExpSelect(wchar_t *line, UINT index); //select ($var){when 10 then {_return(1)}}
 	bool ExpWhen(wchar_t *line, UINT index);
 
-	bool RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index);
-	bool CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index);
+	bool RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index); //обробка виклику вунтрішньої ф-ї
+	bool CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index); //виклик пов'язаної функції-обгортки
 	bool CreateProcedure(wchar_t *str_with_proc, UINT index);
 	bool DropProcedure(const wchar_t *proc_name);
 	bool RunProcedure(const wchar_t *name, const wchar_t *params, UINT index);
-	bool WorkWithObject(wchar_t *str_with_obj, wchar_t *result, UINT index);
+	bool ProcessObject(wchar_t *str_with_obj, wchar_t *result, UINT index);
 	bool RunMethod(const wchar_t *objname, const wchar_t *cl_name, wchar_t *str_with_method, UINT index);
 	bool AddRef(const wchar_t *name, const wchar_t *val);
 	REFERENCE *GetRef(const wchar_t *name);

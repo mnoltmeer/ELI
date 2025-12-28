@@ -139,19 +139,22 @@ const wchar_t *ELI::GetObjCathegory(const wchar_t *obj_name)
 {
   if (FDebugMode)
     {
-	  WriteELIDebug(L"GetObCathegory", L"[START]");
+	  WriteELIDebug(L"GetObCathegory", DBGST);
       WriteELIDebug(L"GetObjCathegory", obj_name);
     }
 
   RESRECORDSET rs = FObjStack->Get(obj_id, std::wstring(obj_name));
 
-  if (rs.size() == 0)
+  if (rs.empty())
     {
       if (FDebugMode)
-        WriteELIDebug(L"GetObCathegory", L"[FAIL]");
+        WriteELIDebug(L"GetObCathegory", DBGFL);
 
       return NULL;
     }
+
+  if (FDebugMode)
+    WriteELIDebug(L"GetObCathegory", DBGOK);
 
   return rs[0]->ObjectCathegory.c_str();
 }
@@ -163,148 +166,139 @@ bool ELI::RunFunc(wchar_t *str_with_func, wchar_t *result, UINT index)
 
   if (FDebugMode)
     {
-	  WriteELIDebug(L"RunFunc", L"[START]");
+	  WriteELIDebug(L"RunFunc", DBGST);
       WriteELIDebug(L"RunFunc", str_with_func);
     }
 
-  std::wstring fname, vals;
-  UINT pos;
+  try
+	 {
+	   std::wstring fname, vals;
+	   UINT pos;
 
 //добавляем в стек служебный параметр - индекс строки из которой вызывается ф-я
-  wchar_t ind[NUMSIZE];
+	   wchar_t ind[NUMSIZE];
 
-  swprintf(ind, L"%d", index);
-  FPrmStack->Add(P_IND, ind);
+	   swprintf(ind, L"%d", index);
+	   FPrmStack->Add(P_IND, ind);
 
 //вычленяем из строки имя ф-ии и список аргументов
-  fname = str_with_func;
+	   fname = str_with_func;
 
-  pos = fname.find_first_of('(');
-  vals = fname.substr(pos + 1, fname.length() - pos - 2);
-  fname.erase(pos, fname.length() - pos);
+	   pos = fname.find_first_of('(');
+	   vals = fname.substr(pos + 1, fname.length() - pos - 2);
+	   fname.erase(pos, fname.length() - pos);
 
-  FUNC *fn = FFnStack->Get(fname.c_str());
+	   FUNC *fn = FFnStack->Get(fname.c_str());
 
-  if (fn)
-	{
-	  std::vector<std::wstring> vecArgs, vecVals;
+	   if (!fn)
+		 throw Exception(FNNAMERR);
 
-	  if ((wcslen(fn->GetParams()) == 0) && (vals.length() == 0)) //нет параметров - ф-я без аргументов
-		res = CallFunc(fn, result, index);
-	  else if ((wcslen(fn->GetParams()) != 0) && (vals.length() == 0)) //нет параметров но ф-я с аргументами
-		{
-          AddInfoMsg(FNARGCNTERR, ERRMSG, index);
-		  AddInfoMsg(FNARGERR, ERRMSG, index);
-		  res = false;
-        }
-	  else
-        {
+       if ((wcslen(fn->GetParams()) != 0) && (vals.length() == 0)) //нет параметров но ф-я с аргументами
+		 {
+		   AddInfoMsg(FNARGCNTERR, ERRMSG, index);
+
+		   throw Exception(FNARGERR);
+		 }
+
+	   std::vector<std::wstring> vecArgs, vecVals;
+
+	   if ((wcslen(fn->GetParams()) == 0) && (vals.length() == 0)) //нет параметров - ф-я без аргументов
+		 res = CallFunc(fn, result, index);
+	   else
+		 {
 //получаем список аргументов
-		  StrToListW(&vecVals, vals, FARGSSEP, NODELIMEND);
+		   StrToListW(&vecVals, vals, FARGSSEP, NODELIMEND);
 //получаем из описания ф-ии описание параметров
-		  StrToListW(&vecArgs, std::wstring(fn->GetParams()), FARGSSEP, NODELIMEND);
+		   StrToListW(&vecArgs, std::wstring(fn->GetParams()), FARGSSEP, NODELIMEND);
 
-          if (vecVals.size() == vecArgs.size()) //если кол-во параметров совпадает с описанием
-            {
-              wchar_t ptype[5], pname[PNAMESIZE], pval[CHARSIZE];
+		   if (vecVals.size() != vecArgs.size()) //если кол-во параметров не совпадает с описанием
+			 throw Exception(FNARGCNTERR);
 
-              for (UINT i = 0; i < vecVals.size(); i++)
-				{
-//инициализируем параметры и добавляем их в стек
-                  try
-                    {
-					  UINT spos = vecArgs[i].find(L" ");
-					  UINT namelen = vecArgs[i].length() - spos - 1;
+		   wchar_t ptype[5], pname[PNAMESIZE], pval[CHARSIZE];
 
-					  wcscpy(ptype, vecArgs[i].substr(0, spos).c_str());
-                      wcscpy(pname, vecArgs[i].substr(spos + 1, namelen).c_str());
-                      wcscpy(pval, vecVals[i].c_str());
+		   for (UINT i = 0; i < vecVals.size(); i++) //инициализируем параметры и добавляем их в стек
+			  {
+				UINT spos = vecArgs[i].find(L" ");
+				UINT namelen = vecArgs[i].length() - spos - 1;
 
-                      if (0 == _wcsicmp(ptype, S_NUM))
-                        {
-                          float *fres = CalcExpNum(pval, index);
+				wcscpy(ptype, vecArgs[i].substr(0, spos).c_str());
+				wcscpy(pname, vecArgs[i].substr(spos + 1, namelen).c_str());
+				wcscpy(pval, vecVals[i].c_str());
 
-                          if (fres)
-                            swprintf(pval, FRMTNUM, *fres);
-                          else
-                            {
-							  AddInfoMsg(NUMERR, ERRMSG, index);
+				if (_wcsicmp(ptype, S_NUM) == 0)
+				  {
+					float *fres = CalcExpNum(pval, index);
 
-                              return false;
-                            }
-                        }
-                      else if (0 == _wcsicmp(ptype, S_SYM))
-                        {
+					if (fres)
+					  swprintf(pval, FRMTNUM, *fres);
+					else
+					  throw Exception(NUMERR);
+				  }
+				else if (_wcsicmp(ptype, S_SYM) == 0)
+				  {
 //если функция не из тех, которые используют в качестве аргументов имена переменных
 //приведем содержимое аргумента к простому значению
-						  if (!_wstriincl(fname.c_str(), L"Create", 0) &&
-							  !_wstriincl(fname.c_str(), L"free", 1) &&
-                              !_wstriincl(fname.c_str(), L"Run", 1) &&
-                              !_wstriincl(fname.c_str(), L"ReadIn", 1) &&
-                              (!(_wstriincl(fname.c_str(), L"LoadFileToVar", 1) && (_wcsicmp(pname, L"pTarget") == 0)))&&
-                              (!(_wstriincl(fname.c_str(), L"SaveVarToFile", 1) && (_wcsicmp(pname, L"pTarget") == 0)))&&
-                              (!(_wstriincl(fname.c_str(), L"SaveFragmentToFile", 1) && (_wcsicmp(pname, L"pTarget") == 0))))
-                            {
-                              const wchar_t *sres = CalcExpStr(pval, index);
+					if (!_wstriincl(fname.c_str(), L"Create", 0) &&
+						!_wstriincl(fname.c_str(), L"free", 1) &&
+						!_wstriincl(fname.c_str(), L"Run", 1) &&
+						!_wstriincl(fname.c_str(), L"ReadIn", 1) &&
+						(!(_wstriincl(fname.c_str(), L"LoadFileToVar", 1) && (_wcsicmp(pname, L"pTarget") == 0)))&&
+						(!(_wstriincl(fname.c_str(), L"SaveVarToFile", 1) && (_wcsicmp(pname, L"pTarget") == 0)))&&
+						(!(_wstriincl(fname.c_str(), L"SaveFragmentToFile", 1) && (_wcsicmp(pname, L"pTarget") == 0))))
+					  {
+						const wchar_t *sres = CalcExpStr(pval, index);
 
-                              if (0 != _wcsicmp(sres, ERROUT))
-                                wcscpy(pval, sres);
-                              else
-								return false;
-                            }
-                        }
-                      else
-                        {
-                          AddInfoMsg(FNARGERR, ERRMSG, index);
+						if (_wcsicmp(sres, ERROUT) != 0)
+						  wcscpy(pval, sres);
+						else
+						  throw Exception(FNARGERR);
+					  }
+				  }
+				else
+				  throw Exception(FNARGERR);
 
-                          return false;
-                        }
+				FPrmStack->Add(pname, pval);
+			  }
 
-					  FPrmStack->Add(pname, pval);
-                    }
-				 catch (Exception &e)
-                    {
-					  String msg = "RunFunc(" + String(str_with_func) + "), create params: " + e.ToString();
-					  AddInfoMsg(FNARGERR, ERRMSG, index);
-					  AddInfoMsg(msg.c_str(), ERRMSG, index);
-					  wcscpy(result, L"0");
+		   res = CallFunc(fn, result, index); //выполняем функцию
+		 }
 
-                      return false;
-                    }
-                }
+	   if (_wstrincl(fname.c_str(), L"return", 1))
+		 {
+		   AddInfoMsg(SCEXIT, INFMSG, index);
 
-//выполняем функцию
-			  res = CallFunc(fn, result, index);
-            }
-          else
-            {
-			  AddInfoMsg(FNARGCNTERR, ERRMSG, index);
-			  res = false;
-			}
-		}
-    }
-  else
-    {
-	  AddInfoMsg(FNNAMERR, ERRMSG, index);
-	  res = false;
-    }
+		   res = false;
+		 }
+	   else if (_wstrincl(fname.c_str(), L"throw", 1))
+		 {
+		   AddInfoMsg(SCEXCEPT, INFMSG, index);
 
-  if (_wstrincl(fname.c_str(), L"return", 1))
-    {
-	  AddInfoMsg(SCEXIT, INFMSG, index);
-	  res = false;
-    }
-  else if (_wstrincl(fname.c_str(), L"throw", 1))
-    {
-	  AddInfoMsg(SCEXCEPT, INFMSG, index);
-	  res = false;
-	}
+		   res = false;
+		 }
 
-  if (FDebugMode)
-	{
-	  WriteELIDebug(L"RunFunc", result);
-	  WriteELIDebug(L"RunFunc", L"[END]");
-	}
+       if (FDebugMode)
+		 {
+		   WriteELIDebug(L"RunFunc", result);
+		   WriteELIDebug(L"RunFunc", DBGOK);
+		 }
+	 }
+  catch (Exception &e)
+	 {
+	   String msg = String(str_with_func) + " : error";
+
+	   AddInfoMsg(msg.c_str(), ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"RunFunc", e.ToString().c_str());
+		   WriteELIDebug(L"RunFunc", DBGFL);
+		 }
+
+	   wcscpy(result, L"0");
+
+	   res = false;
+	 }
 
   return res;
 }
@@ -315,7 +309,10 @@ bool ELI::CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index)
   bool res = false;
 
   if (FDebugMode)
-	WriteELIDebug(L"CallFunc", fn_ptr->GetName());
+	{
+	  WriteELIDebug(L"CallFunc", DBGST);
+	  WriteELIDebug(L"CallFunc", fn_ptr->GetName());
+	}
 
   try
 	 {
@@ -335,8 +332,9 @@ bool ELI::CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index)
 	 }
   catch (Exception &e)
 	 {
-	   String msg = "CallFunc: " + e.ToString();
-	   AddInfoMsg(msg.c_str(), ERRMSG, index);
+	   AddInfoMsg(L"Calling function: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
 	   wcscpy(result, L"0");
 
 	   res = false;
@@ -350,437 +348,448 @@ bool ELI::CallFunc(FUNC *fn_ptr, wchar_t *result, UINT index)
 
 bool ELI::CreateProcedure(wchar_t *str_with_proc, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
     {
-      WriteELIDebug(L"CreateProcedure", L"[START]");
+      WriteELIDebug(L"CreateProcedure", DBGST);
       WriteELIDebug(L"CreateProcedure", str_with_proc);
-    }
-
-  wchar_t procname[MAXNAMELEN], procprm[STRBUFSTACK], proctext[MAXNAMELEN];
-
-  _wstrcpywc(_wsetpstr(str_with_proc, 10), procname, '(');
-  int pos = _wstrcpos(str_with_proc, '(') + 1;
-  _wstrcpywc(_wsetpstr(str_with_proc, pos), procprm, ')');
-  pos = _wstrcpos(str_with_proc, ')') + 1;
-  wcscpy(proctext, _wsetpstr(str_with_proc, pos));
-
-  RESOURCE res;
-
-  res.ObjectCathegory = OBJPROC;
-  res.ObjectID = procname;
-  res.PropertyID = OBJPROCPRM;
-  res.Value = procprm;
-
-  if (FProcStack->Get(obj_id, res.ObjectID).size() > 0)
-    {
-      AddInfoMsg(PROCNOCRT, ERRMSG, index);
-
-      return false;
-    }
-
-  if (FProcStack->Add(res) < 1)
-    {
-      AddInfoMsg(PROCNOCRT, ERRMSG, index);
-
-      return false;
-    }
-
-  res.ObjectCathegory = OBJPROC;
-  res.ObjectID = procname;
-  res.PropertyID = OBJPROCTXT;
-  res.Value = proctext;
-
-  if (FProcStack->Add(res) < 1)
-    {
-      AddInfoMsg(PROCNOCRT, ERRMSG, index);
-
-      return false;
-    }
-
-  if (FDebugMode)
-    WriteELIDebug(L"CreateProcedure", L"[OK]");
-
-  return true;
-}
-//-------------------------------------------------------------------------------
-
-bool ELI::DropProcedure(const wchar_t *proc_name)
-{
-  if (FDebugMode)
-    {
-      WriteELIDebug(L"DropProcedure", L"[START]");
-      WriteELIDebug(L"DropProcedure", proc_name);
-    }
-
-  RESRECORDSET rs = FProcStack->Get(obj_id, std::wstring(proc_name));
-
-  if (rs.size() > 0)
-    {
-      for (UINT i = 0; i < rs.size(); i++)
-        {
-          rs[i]->KeepInStack = NO;
-
-          if (rs[i]->PropertyID == OBJPROCTXT)
-			FFrgStack->Remove(rs[i]->Value);
-        }
-
-      FProcStack->Compact();
-
-      return true;
-    }
-
-  return false;
-}
-//-------------------------------------------------------------------------------
-
-bool ELI::RunProcedure(const wchar_t *name, const wchar_t *params, UINT index)
-{
-  if (FDebugMode)
-    {
-      WriteELIDebug(L"RunProcedure", L"[START]");
-	  std::wstring str = std::wstring(name) + L"(" + std::wstring(params) + L")";
-      WriteELIDebug(L"RunProcedure", str.c_str());
-    }
-
-  std::vector<std::wstring> prms, vals;
-  RESRECORDSET rs = FProcStack->Get(obj_id, std::wstring(name));
-
-  if (rs.size() < 2)
-	{
-	  AddInfoMsg(PROCNAMERR, ERRMSG, index);
-
-	  return false;
 	}
 
-//приберем завершальну ',' з params, яка з'являється у випадку, коли останній параметр є порожнім рядком
-  UINT len = wcslen(params),
-	   argsccnt = _wstrccount(rs[0]->Value.c_str(), FARGSSEP[0]),
-	   prmsccnt = _wstrccount(params, FARGSSEP[0]);
+  try
+	 {
+       wchar_t procname[MAXNAMELEN], procprm[STRBUFSTACK], proctext[MAXNAMELEN];
 
-//якщо в аргументах немає ',' (один аргумент), а в параметрах останній символ це ',' (параметр - порожня строка)
-  if ((params[len - 1] == FARGSSEP[0]) && (argsccnt == 0))
-	prmsccnt--; //змусимо ELI ігнорувати цю кому
+	   _wstrcpywc(_wsetpstr(str_with_proc, 10), procname, '(');
+	   int pos = _wstrcpos(str_with_proc, '(') + 1;
+	   _wstrcpywc(_wsetpstr(str_with_proc, pos), procprm, ')');
+	   pos = _wstrcpos(str_with_proc, ')') + 1;
+	   wcscpy(proctext, _wsetpstr(str_with_proc, pos));
 
-  if (argsccnt != prmsccnt)
-	{
-	  AddInfoMsg(PROCARGCNTERR, ERRMSG, index);
+	   RESOURCE r;
 
-	  return false;
-	}
+	   r.ObjectCathegory = OBJPROC;
+	   r.ObjectID = procname;
+	   r.PropertyID = OBJPROCPRM;
+	   r.Value = procprm;
 
-//получаем списки имен указанных при объявлении параметров и полученных значений
-  if (rs[0]->Value != L"")
-	{
-	  StrToListW(&prms, rs[0]->Value, FARGSSEP, NODELIMEND);
-	  StrToListW(&vals, std::wstring(params), FARGSSEP, NODELIMEND);
-	}
+	   if (FProcStack->Get(obj_id, r.ObjectID).size() > 0)
+		 throw Exception(PROCNAMEXST);
 
-//получим текст процедуры, развернем его из стека фрагментов и запарсим параметры значениями
-  SCRIPTLINES *proccode = FFrgStack->GetFragmentCode(rs[1]->Value);
+	   if (FProcStack->Add(r) < 1)
+		 throw Exception(PROCNOCRT);
 
-  if (!proccode)
-    {
-      AddInfoMsg(FRGMNTERR, ERRMSG, index);
+	   r.ObjectCathegory = OBJPROC;
+	   r.ObjectID = procname;
+	   r.PropertyID = OBJPROCTXT;
+	   r.Value = proctext;
 
-      return false;
-	}
+	   if (FProcStack->Add(r) < 1)
+		 throw Exception(PROCNOCRT);
 
-//инициализируем стек переменных для процедуры
-  FCurrentStack = NULL;
-  VARSTACK *loc = new VARSTACK();
-  FVSt.push_back(loc);
-  UINT i = FVSt.size() - 1;
-  FCurrentStack = FVSt.back(); //переключаем указатель на локальный стек
-  static bool res = false;
-//инициализируем в локальном стеке переменные, которым будут присвоены значения аргументов
-  wchar_t str[CHARSIZE];
+	   if (FDebugMode)
+		 WriteELIDebug(L"CreateProcedure", DBGOK);
 
-  for (UINT i = 0; i < prms.size(); i++)
-     {
-	   swprintf(str, L"%s = %c%s%c", prms[i].c_str(), STRSYM, vals[i].c_str(), STRSYM);
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Creating procedure: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
-	   if (!TranslateLine(str, index))
-         {
-		   AddInfoMsg(PROCARGERR, ERRMSG, index);
+	   if (FDebugMode)
+		 WriteELIDebug(L"CreateProcedure", DBGFL);
 
-           return false;
-         }
-     }
-
-  res = TranslateFragment(proccode, index);
-
-  delete FVSt[i];
-  FVSt[i] = NULL;
-  loc = NULL;
-  FVSt.erase(FVSt.begin() + i);
-  FCurrentStack = FVSt.back(); //возвращаем указатель на уровень выше
-
-  if (FDebugMode)
-    WriteELIDebug(L"RunProcedure", L"[END]");
+	   res = false;
+	 }
 
   return res;
 }
 //-------------------------------------------------------------------------------
 
-bool ELI::WorkWithObject(wchar_t *str_with_obj, wchar_t *result, UINT index)
+bool ELI::DropProcedure(const wchar_t *proc_name)
 {
+  bool res = false;
+
+  if (FDebugMode)
+	{
+	  WriteELIDebug(L"DropProcedure", DBGST);
+	  WriteELIDebug(L"DropProcedure", proc_name);
+	}
+
+  try
+	 {
+	   RESRECORDSET rs = FProcStack->Get(obj_id, std::wstring(proc_name));
+
+	   if (rs.empty())
+		 throw Exception(PROCNAMERR);
+
+	   for (UINT i = 0; i < rs.size(); i++)
+		  {
+			rs[i]->KeepInStack = NO;
+
+			if (rs[i]->PropertyID == OBJPROCTXT)
+			  FFrgStack->Remove(rs[i]->Value);
+		  }
+
+	   FProcStack->Compact();
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"DropProcedure", DBGOK);
+
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   if (FDebugMode)
+		 WriteELIDebug(L"DropProcedure", DBGFL);
+
+	   res = false;
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+bool ELI::RunProcedure(const wchar_t *name, const wchar_t *params, UINT index)
+{
+  bool res = false;
+
+  if (FDebugMode)
+	{
+	  WriteELIDebug(L"RunProcedure", DBGST);
+	  std::wstring str = std::wstring(name) + L"(" + std::wstring(params) + L")";
+	  WriteELIDebug(L"RunProcedure", str.c_str());
+	}
+
+  try
+	 {
+	   std::vector<std::wstring> prms, vals;
+	   RESRECORDSET rs = FProcStack->Get(obj_id, std::wstring(name));
+
+	   if (rs.size() < 2)
+		 throw Exception(PROCNAMERR);
+
+//приберем завершальну ',' з params, яка з'являється у випадку, коли останній параметр є порожнім рядком
+	   UINT len = wcslen(params),
+			argsccnt = _wstrccount(rs[0]->Value.c_str(), FARGSSEP[0]),
+			prmsccnt = _wstrccount(params, FARGSSEP[0]);
+
+//якщо в аргументах немає ',' (один аргумент), а в параметрах останній символ це ',' (параметр - порожня строка)
+	   if ((params[len - 1] == FARGSSEP[0]) && (argsccnt == 0))
+		 prmsccnt--; //змусимо ELI ігнорувати цю кому
+
+	   if (argsccnt != prmsccnt)
+		 throw Exception(PROCARGCNTERR);
+
+//получаем списки имен указанных при объявлении параметров и полученных значений
+	   if (rs[0]->Value != L"")
+		 {
+		   StrToListW(&prms, rs[0]->Value, FARGSSEP, NODELIMEND);
+		   StrToListW(&vals, std::wstring(params), FARGSSEP, NODELIMEND);
+		 }
+
+//получим текст процедуры, развернем его из стека фрагментов и запарсим параметры значениями
+	   SCRIPTLINES *proccode = FFrgStack->GetFragmentCode(rs[1]->Value);
+
+	   if (!proccode)
+		 throw Exception(FRGMNTNOTFND);
+
+//инициализируем стек переменных для процедуры
+	   FCurrentStack = NULL;
+	   VARSTACK *loc = new VARSTACK();
+	   FVSt.push_back(loc);
+	   UINT i = FVSt.size() - 1;
+	   FCurrentStack = FVSt.back(); //переключаем указатель на локальный стек
+
+//инициализируем в локальном стеке переменные, которым будут присвоены значения аргументов
+	   wchar_t str[CHARSIZE];
+
+	   for (UINT i = 0; i < prms.size(); i++)
+		  {
+			swprintf(str, L"%s = %c%s%c", prms[i].c_str(), STRSYM, vals[i].c_str(), STRSYM);
+
+			if (!TranslateLine(str, index))
+			  throw Exception(PROCARGERR);
+		  }
+
+	   res = TranslateFragment(proccode, index);
+
+	   delete FVSt[i];
+	   FVSt[i] = NULL;
+	   loc = NULL;
+	   FVSt.erase(FVSt.begin() + i);
+	   FCurrentStack = FVSt.back(); //возвращаем указатель на уровень выше
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"RunProcedure", DBGOK);
+
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Running procedure: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"RunProcedure", DBGFL);
+
+	   res = false;
+	 }
+
+  return res;
+}
+//-------------------------------------------------------------------------------
+
+bool ELI::ProcessObject(wchar_t *str_with_obj, wchar_t *result, UINT index)
+{
+  bool res = false;
+
   if (FDebugMode)
     {
-      WriteELIDebug(L"WorkWithObject", L"[START]");
-      WriteELIDebug(L"WorkWithObject", str_with_obj);
-    }
+      WriteELIDebug(L"ProcessObject", DBGST);
+      WriteELIDebug(L"ProcessObject", str_with_obj);
+	}
 
+  try
+	 {
 //парсимо рядок на числові константи, щоб роздільник розрядів не сприймався як OBJPROPSEP
-  wcscpy(str_with_obj, ParseConstNumbers(str_with_obj));
+	   wcscpy(str_with_obj, ParseConstNumbers(str_with_obj));
 
-  wchar_t prop[MAXNAMELEN], name[MAXNAMELEN], oldname[MAXNAMELEN];
+	   wchar_t prop[MAXNAMELEN], name[MAXNAMELEN], oldname[MAXNAMELEN];
 
 //вычленяем из строки имя объекта
-  if (_wstrcpywc(str_with_obj, oldname, OBJPROPSEP) < 0)
-    {
-      AddInfoMsg(SYNTAXERR, ERRMSG, index);
-
-      return false;
-    }
+	   if (_wstrcpywc(str_with_obj, oldname, OBJPROPSEP) < 0)
+		 throw Exception(SYNTAXERR);
 
 //парсим имя объекта на имена переменных для правильного исп. методов
-  wcscpy(name, oldname);
+	  wcscpy(name, oldname);
 
-  if (!ParseVarInExp(name, index))
-    {
-      AddInfoMsg(OBJNOCRTNAME, ERRMSG, index);
-
-      return false;
-    }
+	  if (!ParseVarInExp(name, index))
+		throw Exception(OBJNOCRTNAME);
 
 //добавляем параметр с именем объекта в стек для использования в вызываемой ф-ии
-  FPrmStack->Add(P_OBJNAME, name);
+	  FPrmStack->Add(P_OBJNAME, name);
 
 //пишем оставшееся в имя свойства
-  wcscpy(prop, _wsetpstr(str_with_obj, _wstrcpos(str_with_obj, OBJPROPSEP)) + 1);
+	  wcscpy(prop, _wsetpstr(str_with_obj, _wstrcpos(str_with_obj, OBJPROPSEP)) + 1);
 
-  if (wcslen(prop) == 0)
-    {
-      AddInfoMsg(OBJNOPROP, ERRMSG, index);
-
-      return false;
-    }
+	  if (wcslen(prop) == 0)
+		throw Exception(OBJNOPROP);
 
 //если в имени свойства есть точка, значит это свойство - объект
 //обрезаем по точку
-  if (_wstrccount(prop, OBJPROPSEP) > 0)
-    {
-      wchar_t tmp[MAXNAMELEN];
+	  if (_wstrccount(prop, OBJPROPSEP) > 0)
+		{
+		  wchar_t tmp[MAXNAMELEN];
 
-      _wstrcpywc(prop, tmp, OBJPROPSEP);
-      wcscpy(prop, tmp);
-    }
+		  _wstrcpywc(prop, tmp, OBJPROPSEP);
+		  wcscpy(prop, tmp);
+		}
 
-//если есть открытая скобка - предполагается метод
-  if (_wstrccount(prop, '(') > 0)
-    {
+	  if (_wstrccount(prop, '(') > 0) //если есть открытая скобка - предполагается метод
+		{
 //получаем предполагаемое имя метода
-	  std::wstring mname = prop;
-	  UINT op = mname.find(L"("), cl = mname.find(L")");
+		  std::wstring mname = prop;
+		  UINT op = mname.find(L"("), cl = mname.find(L")");
+
 //если метод - это Create(), значит категория объекта это аргумент метода
-	  std::wstring cath = mname.substr(op + 1, cl - op - 1);
-	  mname.erase(op, mname.length() - op);
+		  std::wstring cath = mname.substr(op + 1, cl - op - 1);
+		  mname.erase(op, mname.length() - op);
 
 //получаем предполагаемое имя класса - категорию вызывающего объекта
-	  RESRECORDSET rs = FObjStack->Get(obj_id, std::wstring(name));
+		  RESRECORDSET rs = FObjStack->Get(obj_id, std::wstring(name));
 
 //если есть выборка из стека ресурсов - берем категорию из первого элемента выборки
-      if (rs.size() > 0)
-        cath = rs[0]->ObjectCathegory;
+		  if (rs.size() > 0)
+			cath = rs[0]->ObjectCathegory;
 
-      if (IsClassMember(cath.c_str(), mname.c_str()))
-        {
-          if (!IsAccessibleMember(name, mname.c_str()))
-            {
-              AddInfoMsg(OBJMEMNOTACC, ERRMSG, index);
+		  if (IsClassMember(cath.c_str(), mname.c_str()))
+			{
+			  if (!IsAccessibleMember(name, mname.c_str()))
+				throw Exception(OBJMEMNOTACC);
 
-              return false;
-            }
+			  res = RunMethod(name, cath.c_str(), prop, index);
 
-          if (RunMethod(name, cath.c_str(), prop, index))
-            {
-              if (FReturnVal != L"")
-                wcscpy(result, FReturnVal.c_str());
+			  if (FReturnVal != L"")
+				wcscpy(result, FReturnVal.c_str());
+			}
+		  else
+			res = RunFunc(prop, result, index);
+		}
+	  else //скобки нет - предполагается свойство
+		{
+		  std::wstring oldprop = prop;
 
-              return true;
-            }
-          else
-            return false;
-        }
+		  if (!ParseVarInExp(prop, index))
+			throw Exception(OBJNOCRTPROP);
 
-      return RunFunc(prop, result, index);
-    }
-  else //скобки нет - предполагается свойство
-    {
-	  std::wstring oldprop = prop;
+		  RESRECORDSET rs = FObjStack->Get(obj_id, std::wstring(name));
 
-      if (!ParseVarInExp(prop, index))
-        {
-          AddInfoMsg(OBJNOCRTPROP, ERRMSG, index);
+		  if (rs.empty())
+			throw Exception(OBJNONE);
 
-          return false;
-        }
+		  rs.clear();
 
-	  RESRECORDSET rs = FObjStack->Get(obj_id, std::wstring(name));
+		  rs = FObjStack->Get(std::wstring(name), std::wstring(prop));
 
-      if (rs.size() == 0)
-        {
-          AddInfoMsg(OBJNONE, ERRMSG, index);
+		  if (rs.empty()) //если объект не найден
+			throw Exception(OBJNOPROP);
 
-          return false;
-        }
-
-      rs.clear();
-
-	  rs = FObjStack->Get(std::wstring(name), std::wstring(prop));
-
-      if (rs.size() > 0) //если объект найден
-        {
 		  std::wstring cath = rs[0]->ObjectCathegory;
 
-          if (IsClassMember(cath.c_str(), prop))
-            {
-              if (!IsAccessibleMember(name, prop))
-                {
-                  AddInfoMsg(OBJMEMNOTACC, ERRMSG, index);
-
-                  return false;
-                }
-            }
+		  if (IsClassMember(cath.c_str(), prop))
+			{
+			  if (!IsAccessibleMember(name, prop))
+				throw Exception(OBJMEMNOTACC);
+			}
 
 		  std::wstring oname = std::wstring(oldname) + OBJPROPSEPSTR + oldprop;
-
 		  std::wstring operstr = ParseStringW(std::wstring(str_with_obj), oname, rs[0]->Value);
 
-          wcscpy(result, operstr.c_str());
+		  wcscpy(result, operstr.c_str());
 
-		  if (FDebugMode)
-            {
-              WriteELIDebug(L"WorkWithObject", result);
-              WriteELIDebug(L"WorkWithObject", L"[OK]");
-            }
+		  res = true;
+		}
 
-          return true;
-        }
-      else
-        {
-          if (FDebugMode)
-            {
-              WriteELIDebug(L"WorkWithObject", str_with_obj);
-              WriteELIDebug(L"WorkWithObject", L"[FAIL]");
-            }
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"ProcessObject", result);
+		   WriteELIDebug(L"ProcessObject", DBGOK);
+		 }
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Processing object: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
-          AddInfoMsg(OBJNOPROP, ERRMSG, index);
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"ProcessObject", str_with_obj);
+		   WriteELIDebug(L"ProcessObject", DBGFL);
+		 }
 
-          return false;
-        }
-    }
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::RunMethod(const wchar_t* objname, const wchar_t *cl_name, wchar_t *str_with_method, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
     {
-      WriteELIDebug(L"RunMethod", L"[START]");
-      WriteELIDebug(L"RunMethod", str_with_method);
-    }
+	  WriteELIDebug(L"RunMethod", DBGST);
+	  WriteELIDebug(L"RunMethod", str_with_method);
+	}
 
-  std::wstring name, vals;
-  UINT pos;
+  try
+	 {
+	   std::wstring name, vals;
+	   UINT pos;
 
 //вычленяем из строки имя метода и список аргументов
-  name = str_with_method;
+	   name = str_with_method;
 
-  pos = name.find(L"(");
-  vals = name.substr(pos + 1, name.length() - pos - 2);
+	   pos = name.find(L"(");
+	   vals = name.substr(pos + 1, name.length() - pos - 2);
 
-  if (vals != L"")
-	vals = std::wstring(objname).erase(0, 1) + L"," + vals;
-  else
-	vals = std::wstring(objname).erase(0, 1);
+	   if (vals != L"")
+		 vals = std::wstring(objname).erase(0, 1) + L"," + vals;
+	   else
+		 vals = std::wstring(objname).erase(0, 1);
 
-  name.erase(pos, name.length() - pos);
-  name = std::wstring(cl_name) + name;
+	   name.erase(pos, name.length() - pos);
+	   name = std::wstring(cl_name) + name;
 
 //парсим аргументы метода на значения переменных
-  wchar_t valstr[CHARSIZE];
+	   wchar_t valstr[CHARSIZE];
 
-  wcscpy(valstr, vals.c_str());
+	   wcscpy(valstr, vals.c_str());
 
-  if (!ParseVarInExp(valstr, index))
-    {
-      if (FDebugMode)
-        WriteELIDebug(L"RunMethod", L"[FAIL]");
+	   if (!ParseVarInExp(valstr, index))
+		 throw Exception(FNARGERR);
 
-      return false;
-    }
+	   vals = valstr;
 
-  vals = valstr;
+	   res = RunProcedure(name.c_str(), vals.c_str(), index);
 
-  if (RunProcedure(name.c_str(), vals.c_str(), index))
-    {
-      if (FDebugMode)
-        WriteELIDebug(L"RunMethod", L"[OK]");
+	   if (FDebugMode)
+		 WriteELIDebug(L"RunMethod", DBGOK);
+	 }
+  catch (Exception &e)
+	 {
+	   if (FDebugMode)
+		 WriteELIDebug(L"RunMethod", DBGFL);
 
-      return true;
-    }
+	   res = false;
+	 }
 
-  if (FDebugMode)
-    {
-      WriteELIDebug(L"RunMethod", L"[FAIL]");
-    }
-
-  return false;
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::MakeCodeInVar(wchar_t *str, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"MakeCodeInVar", L"[START]");
+	  WriteELIDebug(L"MakeCodeInVar", DBGST);
 	  WriteELIDebug(L"MakeCodeInVar", str);
 	}
 
-  std::wstring vname, mark;
-  UINT pos;
+  try
+	 {
+	   std::wstring vname, mark;
+	   UINT pos;
 
-  vname = str;
-  vname.erase(0, 5);
-  pos = vname.find(FRGMARK);
-  mark = vname.substr(pos, vname.length() - pos);
-  vname.erase(pos, vname.length() - pos);
+	   vname = str;
+	   vname.erase(0, 5);
+	   pos = vname.find(FRGMARK);
+	   mark = vname.substr(pos, vname.length() - pos);
+	   vname.erase(pos, vname.length() - pos);
 
-  wchar_t name[MAXNAMELEN], mrk[MAXNAMELEN];
+	   wchar_t name[MAXNAMELEN], mrk[MAXNAMELEN];
 
-  wcscpy(name, vname.c_str());
-  wcscpy(mrk, mark.c_str());
+	   wcscpy(name, vname.c_str());
+	   wcscpy(mrk, mark.c_str());
 
-  if (!VarInit(name, SCSTR, mrk, index))
-	return false;
+	   if (!VarInit(name, SCSTR, mrk, index))
+		 throw Exception(FRGMNTCRTERR);
 
-  if (FDebugMode)
-	WriteELIDebug(L"MakeCodeInVar", L"[END]");
+	   if (FDebugMode)
+		 WriteELIDebug(L"MakeCodeInVar", DBGOK);
 
-  return true;
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Exporting code to variable: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"MakeCodeInVar", DBGFL);
+
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::CreateTrigger(wchar_t *str, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"CreateTrigger", L"[START]");
+	  WriteELIDebug(L"CreateTrigger", DBGST);
 	  WriteELIDebug(L"CreateTrigger", str);
 	}
-
-  bool res;
 
   try
 	 {
@@ -798,26 +807,26 @@ bool ELI::CreateTrigger(wchar_t *str, UINT index)
 	   wcscpy(tr.condition, cond.c_str());
 	   wcscpy(tr.fragment, mark.c_str());
 
-	   if (!TriggerExists(&tr))
-		 {
-		   FTriggers.push_back(tr);
-		   res = true;
-         }
-	   else
-		 {
-		   AddInfoMsg(TRGCRTERR, ERRMSG, index);
-		   res = false;
-		 }
+	   if (TriggerExists(&tr))
+		 throw Exception(TRGCRTERR);
+
+	   FTriggers.push_back(tr);
+
+	   res = true;
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"CreateTrigger", L"[END]");
+		 WriteELIDebug(L"CreateTrigger", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-	   AddInfoMsg(TRGCRTERR, ERRMSG, index);
+	   AddInfoMsg(L"Creating trigger: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"CreateTrigger", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"CreateTrigger", e.ToString().c_str());
+		   WriteELIDebug(L"CreateTrigger", DBGFL);
+		 }
 
 	   res = false;
 	 }
@@ -828,13 +837,13 @@ bool ELI::CreateTrigger(wchar_t *str, UINT index)
 
 bool ELI::RemoveTrigger(wchar_t *str, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"RemoveTrigger", L"[START]");
+	  WriteELIDebug(L"RemoveTrigger", DBGST);
 	  WriteELIDebug(L"RemoveTrigger", str);
 	}
-
-  bool res = false;
 
   try
 	 {
@@ -854,14 +863,18 @@ bool ELI::RemoveTrigger(wchar_t *str, UINT index)
 		  }
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RemoveTrigger", L"[END]");
+		 WriteELIDebug(L"RemoveTrigger", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-	   AddInfoMsg(TRGREMERR, ERRMSG, index);
+	   AddInfoMsg(L"Removing trigger: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RemoveTrigger", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"RemoveTrigger", e.ToString().c_str());
+		   WriteELIDebug(L"RemoveTrigger", DBGFL);
+		 }
 
 	   res = false;
 	 }
@@ -872,34 +885,38 @@ bool ELI::RemoveTrigger(wchar_t *str, UINT index)
 
 bool ELI::CheckTrigger(TRIGGER *trigger)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"CheckTrigger", L"[START]");
+	  WriteELIDebug(L"CheckTrigger", DBGST);
 	  WriteELIDebug(L"CheckTrigger", trigger->condition);
 	}
 
-  bool res = false;
-
   try
 	 {
-	   if (ExpTrue(trigger->condition, 0) > 0)
-         res = true;
+	   int check = ExpTrue(trigger->condition, 0);
+
+	   if (check < 0)
+		 throw Exception(UNKERR);
+
+	   if (check > 0)
+		 res = true;
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"CheckTrigger", L"[SUCCESS]");
+		 WriteELIDebug(L"CheckTrigger", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-	   AddInfoMsg(UNKTRG, ERRMSG, 0);
+	   AddInfoMsg(L"Cheking trigger: error", ERRMSG, 0);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"CheckTrigger", String("Exception: " + e.ToString()).c_str());
-
-       res = false;
+		 {
+		   WriteELIDebug(L"CheckTrigger", e.ToString().c_str());
+		   WriteELIDebug(L"CheckTrigger", DBGFL);
+		 }
 	 }
-
-  if (FDebugMode)
-	WriteELIDebug(L"CheckTrigger", L"[END]");
 
   return res;
 }
@@ -909,57 +926,52 @@ void ELI::RunTrigger(TRIGGER *trigger)
 {
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"RunTrigger", L"[START]");
+	  WriteELIDebug(L"RunTrigger", DBGST);
 	  WriteELIDebug(L"RunTrigger", trigger->condition);
 	}
 
   try
 	 {
-       try
-		  {
-			SCRIPTLINES *code = FFrgStack->GetFragmentCode(trigger->fragment);
+	   SCRIPTLINES *code = FFrgStack->GetFragmentCode(trigger->fragment);
 
-			if (code)
-			  TranslateFragment(code, 0);
-			else
-			  throw Exception("Fragment not found");
-		  }
-	   catch (Exception &e)
-		  {
-			AddInfoMsg(TRGRUNERR, ERRMSG, 0);
+	   if (!code)
+		 throw Exception(FRGMNTNOTFND);
 
-			if (FDebugMode)
-			  WriteELIDebug(L"RunTrigger", String("Exception: " + e.ToString()).c_str());
-		  }
+	   if (!TranslateFragment(code, 0))
+		 throw Exception(TRGRUNERR);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RunTrigger", L"[END]");
+		 WriteELIDebug(L"RunTrigger", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-	   AddInfoMsg(TRGRUNERR, ERRMSG, 0);
+	   AddInfoMsg(L"Processing trigger: error", ERRMSG, 0);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RunTrigger", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"RunTrigger", e.ToString().c_str());
+		   WriteELIDebug(L"RunTrigger", DBGFL);
+		 }
 	 }
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::TriggerExists(TRIGGER *trigger)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"TriggerExists", L"[START]");
+	  WriteELIDebug(L"TriggerExists", DBGST);
 	  WriteELIDebug(L"TriggerExists", trigger->condition);
 	}
 
-  bool res = false;
-
   try
 	 {
-	   for (int i = 0; i < FTriggers.size(); i++)
+	   for (auto itm : FTriggers)
 		  {
-			if (FTriggers[i].condition == trigger->condition)
+			if (itm.condition == trigger->condition)
 			  {
 				res = true;
 				break;
@@ -967,16 +979,20 @@ bool ELI::TriggerExists(TRIGGER *trigger)
 		  }
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"TriggerExists", L"[END]");
+		 WriteELIDebug(L"TriggerExists", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-       AddInfoMsg(TRGEXST, ERRMSG, 0);
+	   AddInfoMsg(L"Checking trigger for exist: error", ERRMSG, 0);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"TriggerExists", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"TriggerExists", e.ToString().c_str());
+		   WriteELIDebug(L"TriggerExists", DBGFL);
+		 }
 
-       res = false;
+	   res = true; //краще у випадку помилки новий тригер не буде створено
 	 }
 
   return res;
@@ -986,7 +1002,7 @@ bool ELI::TriggerExists(TRIGGER *trigger)
 void ELI::CheckTriggers()
 {
   if (FDebugMode)
-	WriteELIDebug(L"CheckTriggers", L"[START]");
+	WriteELIDebug(L"CheckTriggers", DBGST);
 
   try
 	 {
@@ -1001,27 +1017,31 @@ void ELI::CheckTriggers()
 	   FTriggerCheck = false;
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RunTrigger", L"[END]");
+		 WriteELIDebug(L"CheckTriggers", DBGOK);
 	 }
   catch (Exception &e)
 	 {
-	   AddInfoMsg(UNKTRG, ERRMSG, 0);
+	   AddInfoMsg(L"Checking triggers: error", ERRMSG, 0);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"RunTrigger", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"CheckTriggers", e.ToString().c_str());
+		   WriteELIDebug(L"CheckTriggers", DBGFL);
+		 }
 	 }
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::ProtectTranslate(wchar_t *str, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"ProtectTranslate", L"[START]");
+	  WriteELIDebug(L"ProtectTranslate", DBGST);
 	  WriteELIDebug(L"ProtectTranslate", str);
 	}
-
-  bool res;
 
   try
 	 {
@@ -1032,23 +1052,25 @@ bool ELI::ProtectTranslate(wchar_t *str, UINT index)
 
 			SCRIPTLINES *code = FFrgStack->GetFragmentCode(mark);
 
-			if (code)
-			  TranslateFragment(code, index);
-			else
-			  AddInfoMsg(FRGMNTERR, ERRMSG, index);
+			if (!code)
+			  throw Exception(FRGMNTNOTFND);
+
+			if (!TranslateFragment(code, index))
+			  throw Exception(FRGMNTERR);
 		  }
 	   catch (Exception &e)
 		  {
-			AddInfoMsg(FRGMNTERR, ERRMSG, index);
+			AddInfoMsg(L"Protect translating: error", ERRMSG, 0);
+			AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
 
 			if (FDebugMode)
-			  WriteELIDebug(L"ProtectTranslate", String("Exception: " + e.ToString()).c_str());
+			  WriteELIDebug(L"ProtectTranslate", e.ToString().c_str());
 		  }
 	 }
   __finally
 	 {
 	   if (FDebugMode)
-		 WriteELIDebug(L"ProtectTranslate", L"[END]");
+		 WriteELIDebug(L"ProtectTranslate", DBGOK);
 
 	   res = true;
 	 }
@@ -1059,19 +1081,20 @@ bool ELI::ProtectTranslate(wchar_t *str, UINT index)
 
 bool ELI::ProcessDirective(wchar_t *str, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"ProcessDirective", L"[START]");
+	  WriteELIDebug(L"ProcessDirective", DBGST);
 	  WriteELIDebug(L"ProcessDirective", str);
 	}
-
-  bool res;
 
   try
 	 {
        if (0 == wcscmp(str, L"#exit")) //директива выхода из скрипта
 		 {
 		   AddInfoMsg(SCSTP, INFMSG, index);
+
 		   res = false;
 		 }
 	   else if (_wstrincl(str, L"#procedure", 0)) //объявление процедуры
@@ -1083,12 +1106,8 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 		   _wstrncopy(str, proc, 14, wcslen(str) - 14);
 
 		   if (!DropProcedure(proc))
-			 {
-			   AddInfoMsg(PROCNAMERR, ERRMSG, index);
-			   AddInfoMsg(PROCNODEL, ERRMSG, index);
-			   res = false;
-			 }
-		   else
+			 throw Exception(PROCNODEL);
+
 			res = true;
 		 }
 	   else if (_wstrincl(str, L"#include", 0)) //включение и трансляция кода из др. файла
@@ -1133,25 +1152,20 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 			 }
 
 		   if (FClStack->Get(obj_id, name).size() > 0)
-			 {
-			   AddInfoMsg(CLDUP, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   FCurrClassName = name;
-			   res = TranslateFragment(FFrgStack->GetFragmentCode(mark), index);
-			   FCurrClassName = L"";
+			 throw Exception(CLDUP);
+
+		   FCurrClassName = name;
+		   res = TranslateFragment(FFrgStack->GetFragmentCode(mark), index);
+		   FCurrClassName = L"";
 
 //если был указан родительский класс - добавим его члены к дочернему
-			   if (FClStack->Get(obj_id, parent_name).size() > 0)
-				 {
-				   if (!ImportParentClass(name, parent_name, true))
-					 AddInfoMsg(CLNOPUBPROP, WRNMSG, index);
-				   if (!ImportParentClass(name, parent_name, false))
-					 AddInfoMsg(CLNOPUBMETH, WRNMSG, index);
-				 }
-             }
+		   if (FClStack->Get(obj_id, parent_name).size() > 0)
+			 {
+			   if (!ImportParentClass(name, parent_name, true))
+				 AddInfoMsg(CLNOPUBPROP, WRNMSG, index);
+			   if (!ImportParentClass(name, parent_name, false))
+				 AddInfoMsg(CLNOPUBMETH, WRNMSG, index);
+			 }
 		 }
 	   else if (_wstrincl(str, L"#dropclass", 0)) //удаление класса
 		 {
@@ -1182,65 +1196,46 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 	   else if (_wstrincl(str, L"#property", 0)) //добавление нового свойства в класс
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring prop_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   prop_str.erase(0, 9);
-			   res = AddClassProperty(FCurrClassName, prop_str, false, index);
-             }
+		   std::wstring prop_str = str;
+
+		   prop_str.erase(0, 9);
+
+		   res = AddClassProperty(FCurrClassName, prop_str, false, index);
 		 }
 	   else if (_wstrincl(str, L"#publicproperty", 0)) //добавление нового свойства в класс
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring prop_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   prop_str.erase(0, 15);
+		   std::wstring prop_str = str;
 
-			   res = AddClassProperty(FCurrClassName, prop_str, true, index);
-             }
+		   prop_str.erase(0, 15);
+
+		   res = AddClassProperty(FCurrClassName, prop_str, true, index);
 		 }
 	   else if (_wstrincl(str, L"#method", 0)) //добавление нового метода в класс
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring meth_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   meth_str.erase(0, 7);
+		   std::wstring meth_str = str;
 
-			   res = AddClassMethod(FCurrClassName, meth_str, false, index);
-             }
+		   meth_str.erase(0, 7);
+
+		   res = AddClassMethod(FCurrClassName, meth_str, false, index);
 		 }
 	   else if (_wstrincl(str, L"#publicmethod", 0)) //добавление нового метода в класс
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring meth_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   meth_str.erase(0, 13);
+		   std::wstring meth_str = str;
 
-			   res = AddClassMethod(FCurrClassName, meth_str, true, index);
-             }
+		   meth_str.erase(0, 13);
+
+		   res = AddClassMethod(FCurrClassName, meth_str, true, index);
 		 }
 	   else if (_wstrincl(str, L"#modifyclass", 0)) //редактирование класса
 		 {
@@ -1260,61 +1255,42 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 	   else if (_wstrincl(str, L"#dropproperty", 0)) //удаление свойства из класса
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring prop_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   prop_str.erase(0, 13);
+		   std::wstring prop_str = str;
 
-			   RESRECORDSET rs = FClStack->Get(FCurrClassName, prop_str);
+		   prop_str.erase(0, 13);
 
-			   if (rs.size() == 0)
-				 {
-				   AddInfoMsg(CLNOPROP, ERRMSG, index);
-				   res = false;
-				 }
-			   else
-				 {
-				   if (FClStack->Delete(L"", FCurrClassName, prop_str) < 1)
-					 AddInfoMsg(CLNOPROPREM, WRNMSG, index);
+		   RESRECORDSET rs = FClStack->Get(FCurrClassName, prop_str);
 
-				   res = true;
-				 }
-             }
+		   if (rs.empty())
+			 throw Exception(CLNOPROP);
+
+		   if (FClStack->Delete(L"", FCurrClassName, prop_str) < 1)
+			 AddInfoMsg(CLNOPROPREM, WRNMSG, index);
+
+		   res = true;
 		 }
 	   else if (_wstrincl(str, L"#dropmethod", 0)) //удаление метода из класса
 		 {
 		   if (FCurrClassName == L"")
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
-		   else
-			 {
-			   std::wstring prop_str = str;
+			 throw Exception(SYNTAXERR);
 
-			   prop_str.erase(0, 11);
+		   std::wstring prop_str = str;
 
-			   RESRECORDSET rs = FClStack->Get(FCurrClassName, prop_str);
+		   prop_str.erase(0, 11);
 
-			   if (rs.size() == 0)
-				 {
-				   AddInfoMsg(CLNOPROP, ERRMSG, index);
-				   res = false;
-				 }
-			   else
-				 {
-				   if (FClStack->Delete(L"", FCurrClassName, prop_str) < 1)
-					 AddInfoMsg(CLNOPROPREM, WRNMSG, index);
+		   RESRECORDSET rs = FClStack->Get(FCurrClassName, prop_str);
 
-				   FProcStack->Delete(L"", FCurrClassName + prop_str, L"");
-				   res = true;
-				 }
-             }
+		   if (rs.empty())
+			 throw Exception(CLNOPROP);
+
+		   if (FClStack->Delete(L"", FCurrClassName, prop_str) < 1)
+			 AddInfoMsg(CLNOPROPREM, WRNMSG, index);
+
+		   FProcStack->Delete(L"", FCurrClassName + prop_str, L"");
+
+		   res = true;
 		 }
 	   else if (_wstrincl(str, L"#return", 0)) //установка возвращаемого значения метода
 		 {
@@ -1359,141 +1335,127 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 	   else if (_wstrincl(str, L"#cnum", 0)) //вмикається парсинг числових констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.ParseNumConst = true;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#!cnum", 0)) //вимикається парсинг числових констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.ParseNumConst = false;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#cstr", 0)) //вмикається парсинг символьних констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.ParseSymConst = true;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#!cstr", 0)) //вимикається парсинг символьних констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.ParseSymConst = false;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#keepobjects", 0)) //зберігати вміст стеку об'єктів після трансляції
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.KeepObjects = true;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#!keepobjects", 0)) //не зберігати вміст стеку об'єктів після трансляції
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.KeepObjects = false;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#keepclasses", 0)) //зберігати вміст стеку класів після трансляції
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.KeepClasses = true;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#!keepclasses", 0)) //не зберігати вміст стеку класів після трансляції
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   FSettings.KeepClasses = false;
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#oldsym", 0)) //використовувати символ ' як признак строкових констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   STRSYM = wchar_t(39);
+
 			   res = true;
 			 }
 		 }
 	   else if (_wstrincl(str, L"#!oldsym", 0)) //використовувати символ " як признак строкових констант
 		 {
 		   if (!FSettingsChangeMode)
-			 {
-			   AddInfoMsg(SYNTAXERR, ERRMSG, index);
-			   res = false;
-			 }
+			 throw Exception(SYNTAXERR);
 		   else
 			 {
 			   STRSYM = wchar_t(34);
+
 			   res = true;
 			 }
 		 }
 
 	   if (FDebugMode)
-		 WriteELIDebug(L"ProcessDirective", L"[END]");
+		 WriteELIDebug(L"ProcessDirective", DBGOK);
 	 }
   catch (Exception &e)
 	 {
+	   AddInfoMsg(L"Processing directive: error", ERRMSG, 0);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, 0);
+
 	   if (FDebugMode)
-		 WriteELIDebug(L"ProcessDirective", String("Exception: " + e.ToString()).c_str());
+		 {
+		   WriteELIDebug(L"ProcessDirective", e.ToString().c_str());
+		   WriteELIDebug(L"ProcessDirective", DBGFL);
+		 }
 
 	   res = false;
 	 }
@@ -1504,39 +1466,47 @@ bool ELI::ProcessDirective(wchar_t *str, UINT index)
 
 bool ELI::TranslateCodeFromVar(const wchar_t *name, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
-    {
-	  WriteELIDebug(L"TranslateCodeFromVar", L"[START]");
-	  WriteELIDebug(L"TranslateCodeFromVar", name);
-    }
-
-  VARIABLE *var = FCurrentStack->Get(name);
-
-  if (!var)
 	{
-	  AddInfoMsg(UNKVARNAME, ERRMSG, index);
-
-      return false;
+	  WriteELIDebug(L"TranslateCodeFromVar", DBGST);
+	  WriteELIDebug(L"TranslateCodeFromVar", name);
 	}
 
-  std::wstring ftxt = FCurrentStack->GetStrElement(var);
-  SCRIPTLINES *frg = FFrgStack->GetFragmentCode(ftxt);
+  try
+	 {
+	   VARIABLE *var = FCurrentStack->Get(name);
 
-  if (!frg)
-    {
-      AddInfoMsg(FRGMNTERR, ERRMSG, index);
+	   if (!var)
+		 throw Exception(UNKVARNAME);
 
-      return false;
-    }
+	   std::wstring ftxt = FCurrentStack->GetStrElement(var);
+	   SCRIPTLINES *frg = FFrgStack->GetFragmentCode(ftxt);
 
-  if (TranslateFragment(frg, index))
-    {
-      FFrgStack->Remove(ftxt);
+	   if (!frg)
+		 throw Exception(FRGMNTNOTFND);
 
-      return true;
-    }
+	   if (!TranslateFragment(frg, index))
+		 throw Exception(FRGMNTERR);
 
-  return false;
+       if (FDebugMode)
+		 WriteELIDebug(L"TranslateCodeFromVar", DBGOK);
+
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Translating code from variable: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"TranslateCodeFromVar", DBGFL);
+
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -1544,7 +1514,7 @@ bool ELI::IsSimple(wchar_t *expr)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsSimple", L"[START]");
+      WriteELIDebug(L"IsSimple", DBGST);
       WriteELIDebug(L"IsSimple", expr);
     }
 
@@ -1586,26 +1556,20 @@ bool ELI::IsNumExpression(const wchar_t *expr)
 
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsNumExpression", L"[START]");
+      WriteELIDebug(L"IsNumExpression", DBGST);
       WriteELIDebug(L"IsNumExpression", expr);
     }
 
   while (!_wstrend(expr))
     {
-      if ((IsNum(*expr) < 0) &&
-          (*expr != '(') &&
-           (*expr != ')') &&
-			(IsOper(*expr) < 0) &&
-			(*expr != '.'))
-        return false;
+	  if ((IsNum(*expr) < 0) && (*expr != '(') && (*expr != ')') && (IsOper(*expr) < 0) && (*expr != '.'))
+		return false;
 
 	   expr++;
     }
 
   if (FDebugMode)
-    {
-      WriteELIDebug(L"IsNumExpression", L"[OK]");
-    }
+	WriteELIDebug(L"IsNumExpression", DBGOK);
 
   return true;
 }
@@ -1615,7 +1579,7 @@ UINT ELI::OperSymbPos(std::wstring str)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"OperSymbPos", L"[START]");
+      WriteELIDebug(L"OperSymbPos", DBGST);
       WriteELIDebug(L"OperSymbPos", str.c_str());
     }
 
@@ -1630,7 +1594,7 @@ UINT ELI::OperSymbPos(std::wstring str)
     }
 
   if (FDebugMode)
-    WriteELIDebug(L"OperSymbPos", L"return FAIL");
+	WriteELIDebug(L"OperSymbPos", DBGFL);
 
   return -1;
 }
@@ -1639,7 +1603,7 @@ UINT ELI::OperSymbPos(std::wstring str)
 const wchar_t *ELI::RemoveScopes(wchar_t *in_exp, UINT index)
 {
   if (FDebugMode)
-    WriteELIDebug(L"RemoveScopes", L"[START]");
+    WriteELIDebug(L"RemoveScopes", DBGST);
 
   std::vector<SCPOS> scPos;
   FStrBuffer = L"";
@@ -1652,15 +1616,15 @@ const wchar_t *ELI::RemoveScopes(wchar_t *in_exp, UINT index)
 
   for (UINT i = 0; i < len; i++) //находим последнюю открывающую
     {
-      if ('(' == in_exp[i])
+	  if (in_exp[i] == '(')
         {
-          exp.oppos = i;
+		  exp.oppos = i;
           exp.clpos = -1;
           scPos.push_back(exp);
         }
 
-      if (')' == in_exp[i])
-        {
+	  if (in_exp[i] == ')')
+		{
           spos = scPos.size() - 1;
           do
             {
@@ -1694,7 +1658,7 @@ const wchar_t *ELI::RemoveScopes(wchar_t *in_exp, UINT index)
           float *arg = CalcExpNum(line, index);
 
 		  if (!arg)
-            return ERROUT;
+			return ERROUT;
 
           swprintf(strval, FRMTNUM, *arg);
 		  FStrBuffer = ParseStringW(FStrBuffer, expScope[i], strval);
@@ -1711,106 +1675,107 @@ const wchar_t *ELI::RemoveScopes(wchar_t *in_exp, UINT index)
 const wchar_t *ELI::SetExpToSimple(wchar_t *in_exp, UINT index)
 {
   if (FDebugMode)
-    {
-      WriteELIDebug(L"SetExpToSimple", L"[START]");
-      WriteELIDebug(L"SetExpToSimple", in_exp);
-    }
+	{
+	  WriteELIDebug(L"SetExpToSimple", DBGST);
+	  WriteELIDebug(L"SetExpToSimple", in_exp);
+	}
 
-  std::vector<wchar_t> opPos;
-  wchar_t outstr[CHARSIZE];
-  UINT pos;
+  try
+	 {
+	   std::vector<wchar_t> opPos;
+	   wchar_t outstr[CHARSIZE];
+	   UINT pos;
 
-  FStrBuffer = ERROUT;
+	   while (_wstrccount(in_exp, '(') > 0) //уберем из выражения скобки
+		 wcscpy(in_exp, RemoveScopes(in_exp, index));
 
-  while (_wstrccount(in_exp, '(') > 0) //уберем из выражения скобки
-    {
-      wcscpy(in_exp, RemoveScopes(in_exp, index));
-    }
+	   if (wcscmp(in_exp, ERROUT) == 0)
+		 throw Exception(UNKERR);
 
-  if (0 == wcscmp(in_exp, ERROUT))
-    return ERROUT;
-
-  std::wstring operstr = in_exp;
+	   std::wstring operstr = in_exp;
 
 //запомним порядок расположения символов операций
-  for (UINT i = 0; i < operstr.length(); i++)
-     {
-       if (IsOper(operstr.c_str()[i]) > -1)
-         opPos.push_back(operstr[i]);
-     }
+	   for (UINT i = 0; i < operstr.length(); i++)
+		  {
+			if (IsOper(operstr.c_str()[i]) > -1)
+			  opPos.push_back(operstr[i]);
+		  }
 
 //убираем символы операций
-  operstr = ParseStringW(operstr, L"+", L"=");
-  operstr = ParseStringW(operstr, L"-", L"=");
-  operstr = ParseStringW(operstr, L"*", L"=");
-  operstr = ParseStringW(operstr, L"/", L"=");
+	   operstr = ParseStringW(operstr, L"+", L"=");
+	   operstr = ParseStringW(operstr, L"-", L"=");
+	   operstr = ParseStringW(operstr, L"*", L"=");
+	   operstr = ParseStringW(operstr, L"/", L"=");
 
-  std::vector<std::wstring> args;
+	   std::vector<std::wstring> args;
 
-  StrToListW(&args, operstr, L"=", NODELIMEND);
+	   StrToListW(&args, operstr, L"=", NODELIMEND);
 
-  for (UINT i = opPos.size() - 1; i > 1; i--)
-     {
-       if (IsOper(opPos[i]) > 2) //найден символ операци с высоким приоритетом
-         {
+	   for (UINT i = opPos.size() - 1; i > 1; i--)
+		  {
+			if (IsOper(opPos[i]) > 2) //найден символ операци с высоким приоритетом
+			  {
 //индексу i операции соответствуют элементы i-1 и i в векторе аргументов
 //если аргументы - отрицательные числа, заменим NEGNUM на -
-		   if (NEGNUM == args.at(i)[0])
-			 args.at(i)[0] = '-';
+				if (NEGNUM == args.at(i)[0])
+				  args.at(i)[0] = '-';
 
-		   if (NEGNUM == args.at(i + 1)[0])
-			 args.at(i + 1)[0] = '-';
+				if (NEGNUM == args.at(i + 1)[0])
+				  args.at(i + 1)[0] = '-';
 
-           float larg = _wtof(args[i].c_str());
-           float rarg = _wtof(args[i + 1].c_str());
+				float larg = _wtof(args[i].c_str());
+				float rarg = _wtof(args[i + 1].c_str());
 
-           if (rarg == 0.0)
-             {
-               AddInfoMsg(SYNTAXERR, ERRMSG, index);
+				if (rarg == 0.0f)
+				 throw Exception(SYNTAXERR);
 
-               return ERROUT;
-             }
+				switch (opPos[i])
+				  {
+					case '*': larg = larg * rarg; break;
+					case '/':
+					  {
+						if (rarg == 0.0f)
+						  throw Exception(NUMCONSLERR);
 
-           switch (opPos[i])
-             {
-               case '*': larg = larg * rarg; break;
-               case '/':
-                 {
-                   if (rarg != 0)
-                     larg = larg / rarg;
-                   else
-                     {
-                       AddInfoMsg(SYNTAXERR, ERRMSG, index);
+						larg = larg / rarg;
 
-                       return NULL;
-                     }
-                   break;
-                 }
-             }
+						break;
+					  }
+				  }
 
 //запишем полученное значение обратно в вектор аргументов
-           wchar_t arg[NUMSIZE];
-           swprintf(arg, FRMTNUM, larg);
-           args[i] = arg;
-           args[i + 1] = L"@"; //пометим элемент вектора аргументов на удаление
-           opPos[i] = '@';    //пометим элемент вектора операций на удаление
-
-        }
-     }
+			   wchar_t arg[NUMSIZE];
+			   swprintf(arg, FRMTNUM, larg);
+			   args[i] = arg;
+			   args[i + 1] = L"@"; //пометим элемент вектора аргументов на удаление
+			   opPos[i] = '@';    //пометим элемент вектора операций на удаление
+			  }
+		  }
 
 //соберем содержимое векторов обратно в строку
-  pos = 0;
+	  pos = 0;
 
-  for (UINT i = 1; i < args.size(); i++)
-     {
-       if ('@' != opPos[i - 1])
-         pos += swprintf(outstr + pos, L"%c%s", opPos[i - 1], args[i].c_str());
+	  for (UINT i = 1; i < args.size(); i++)
+		 {
+		   if ('@' != opPos[i - 1])
+			 pos += swprintf(outstr + pos, L"%c%s", opPos[i - 1], args[i].c_str());
+		 }
+
+	   FStrBuffer = outstr;
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"SetExpToSimple", DBGOK);
 	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Simplifying  expression: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
-  FStrBuffer = outstr;
+	   if (FDebugMode)
+		 WriteELIDebug(L"SetExpToSimple", DBGFL);
 
-  if (FDebugMode)
-    WriteELIDebug(L"SetExpToSimple", L"[END]");
+	   FStrBuffer = ERROUT;
+	 }
 
   return FStrBuffer.c_str();
 }
@@ -1826,7 +1791,7 @@ bool ELI::IsCorrectVarName(const wchar_t *varname)
 
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsCorrectVarName", L"[START]");
+      WriteELIDebug(L"IsCorrectVarName", DBGST);
       WriteELIDebug(L"IsCorrectVarName", varname);
     }
 
@@ -1860,7 +1825,7 @@ bool ELI::IsCorrectVarName(const wchar_t *varname)
     }
 
   if (FDebugMode)
-    WriteELIDebug(L"IsCorrectVarName", L"[OK]");
+    WriteELIDebug(L"IsCorrectVarName", DBGOK);
 
   return true;
 }
@@ -1879,7 +1844,7 @@ bool ELI::IsCorrectName(const wchar_t *str)
 
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsCorrectName", L"[START]");
+      WriteELIDebug(L"IsCorrectName", DBGST);
       WriteELIDebug(L"IsCorrectName", str);
     }
 
@@ -1913,7 +1878,7 @@ bool ELI::IsCorrectName(const wchar_t *str)
     }
 
   if (FDebugMode)
-    WriteELIDebug(L"IsCorrectName", L"[OK]");
+    WriteELIDebug(L"IsCorrectName", DBGOK);
 
   return true;
 }
@@ -1927,20 +1892,20 @@ bool ELI::IsClassMember(const wchar_t *cl_name, const wchar_t *mb_name)
 	  msg += OBJPROPSEPSTR;
 	  msg += mb_name;
 
-	  WriteELIDebug(L"IsClassMember", L"[START]");
+	  WriteELIDebug(L"IsClassMember", DBGST);
 	  WriteELIDebug(L"IsClassMember", msg.c_str());
 	}
 
-  if (FClStack->Get(cl_name, mb_name).size() > 0)
+  if (!FClStack->Get(cl_name, mb_name).empty())
     {
       if (FDebugMode)
-        WriteELIDebug(L"IsClassMember", L"[OK]");
+        WriteELIDebug(L"IsClassMember", DBGOK);
 
       return true;
     }
 
   if (FDebugMode)
-    WriteELIDebug(L"IsClassMember", L"[FAIL]");
+    WriteELIDebug(L"IsClassMember", DBGFL);
 
   return false;
 }
@@ -1950,25 +1915,25 @@ bool ELI::IsPublicMember(const wchar_t *cl_name, const wchar_t *mb_name)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsPublicMember", L"[START]");
+      WriteELIDebug(L"IsPublicMember", DBGST);
       WriteELIDebug(L"IsPublicMember", mb_name);
     }
 
   RESRECORDSET rs = FClStack->Get(cl_name, mb_name);
 
-  if (rs.size() > 0)
+  if (!rs.empty())
     {
       if ((rs[0]->ObjectCathegory == CLPUBMETHOD) || (rs[0]->ObjectCathegory == CLPUBPROP))
         {
           if (FDebugMode)
-            WriteELIDebug(L"IsPublicMember", L"[OK]");
+            WriteELIDebug(L"IsPublicMember", DBGOK);
 
           return true;
         }
 	}
 
   if (FDebugMode)
-    WriteELIDebug(L"IsPublicMember", L"[FAIL]");
+    WriteELIDebug(L"IsPublicMember", DBGFL);
 
   return false;
 }
@@ -1978,7 +1943,7 @@ bool ELI::IsAccessibleMember(const wchar_t *obj_name, const wchar_t *mb_name)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"IsAccessibleMember", L"[START]");
+      WriteELIDebug(L"IsAccessibleMember", DBGST);
       WriteELIDebug(L"IsAccessibleMember", mb_name);
     }
 
@@ -1989,7 +1954,7 @@ bool ELI::IsAccessibleMember(const wchar_t *obj_name, const wchar_t *mb_name)
   if (IsPublicMember(cl_name.c_str(), mb_name))
     {
       if (FDebugMode)
-        WriteELIDebug(L"IsAccessibleMember", L"[OK]");
+        WriteELIDebug(L"IsAccessibleMember", DBGOK);
 
       return true;
     }
@@ -2002,7 +1967,7 @@ bool ELI::IsAccessibleMember(const wchar_t *obj_name, const wchar_t *mb_name)
 		  if (wchar_t(OBJSYM) + FCurrentStack->GetStrElement(var) == obj_name)
             {
 			  if (FDebugMode)
-                WriteELIDebug(L"IsAccessibleMember", L"[OK]");
+                WriteELIDebug(L"IsAccessibleMember", DBGOK);
 
               return true;
             }
@@ -2010,7 +1975,7 @@ bool ELI::IsAccessibleMember(const wchar_t *obj_name, const wchar_t *mb_name)
     }
 
   if (FDebugMode)
-    WriteELIDebug(L"IsAccessibleMember", L"[FAIL]");
+    WriteELIDebug(L"IsAccessibleMember", DBGFL);
 
   return false;
 }
@@ -2019,9 +1984,9 @@ bool ELI::IsAccessibleMember(const wchar_t *obj_name, const wchar_t *mb_name)
 UINT ELI::CheckExprType(const wchar_t *expr, UINT index)
 {
   if (FDebugMode)
-    WriteELIDebug(L"CheckExprType", L"[START]");
+    WriteELIDebug(L"CheckExprType", DBGST);
 
-  static UINT exptype;
+  UINT exptype;
 
   if (VARSYM == expr[0]) //если expr - переменная
     {
@@ -2060,176 +2025,190 @@ UINT ELI::CheckExprType(const wchar_t *expr, UINT index)
 
 bool ELI::ParseVarInExp(wchar_t *expr, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseVarInExp", L"[START]");
+      WriteELIDebug(L"ParseVarInExp", DBGST);
       WriteELIDebug(L"ParseVarInExp", expr);
-    }
+	}
 
-  std::wstring operstr = expr;
-  wchar_t str[MAXNAMELEN];
-  std::vector<std::wstring> varPos;
+  try
+	 {
+	   std::wstring operstr = expr;
+	   wchar_t str[MAXNAMELEN];
+	   std::vector<std::wstring> varPos;
+	   int cppos = -1;
+	   UINT exprlen = wcslen(expr);
 
-  int cppos = -1;
-  UINT exprlen;
+	   for (UINT i = 0; i < exprlen; i++)
+		  {
+			if (expr[i] == VARSYM)
+			  {
+				if (cppos > -1)
+				  {
+					_wstrncopy(expr, str, cppos, i - cppos);
+					varPos.push_back(str);
+				  }
 
-  exprlen = wcslen(expr);
+				cppos = i;
+			  }
 
-  for (UINT i = 0; i < exprlen; i++)
-    {
-      if (expr[i] == VARSYM)
-        {
-          if (cppos > -1)
-            {
-              _wstrncopy(expr, str, cppos, i - cppos);
-              varPos.push_back(str);
-            }
+			if ((IsOper(expr[i]) > -1) ||
+				(')' == expr[i]) ||
+				(STRCCONS == expr[i]) ||
+				(',' == expr[i]) ||
+				(':' == expr[i]) ||
+				//('.' == expr[i]) ||
+				(OBJPROPSEP == expr[i]))
+			  {
+				if (cppos > -1)
+				  {
+					_wstrncopy(expr, str, cppos, i - cppos);
+					varPos.push_back(str);
+				  }
 
-          cppos = i;
-        }
+				cppos = -1;
+			  }
 
-      if ((IsOper(expr[i]) > -1) ||
-          (')' == expr[i]) ||
-          (STRCCONS == expr[i]) ||
-          (',' == expr[i]) ||
-          (':' == expr[i]) ||
-		  //('.' == expr[i]) ||
-		  (OBJPROPSEP == expr[i]))
-        {
-          if (cppos > -1)
-            {
-              _wstrncopy(expr, str, cppos, i - cppos);
-              varPos.push_back(str);
-            }
+			if (i == exprlen - 1)
+			  {
+				if (cppos > -1)
+				  {
+					_wstrncopy(expr, str, cppos, i - cppos + 1);
+					varPos.push_back(str);
+				  }
 
-          cppos = -1;
-        }
+				cppos = -1;
+			  }
+		  }
 
-     if (i == exprlen - 1)
-       {
-         if (cppos > -1)
-           {
-             _wstrncopy(expr, str, cppos, i - cppos + 1);
-             varPos.push_back(str);
-           }
+	   VARIABLE *var;
 
-         cppos = -1;
-       }
-    }
+	   for (UINT i = 0; i < varPos.size(); i++)
+		  {
+			var = FCurrentStack->Get(varPos[i].c_str());
 
-  VARIABLE *var;
+			if (!var)
+			  AddInfoMsg(UNKVARNAME, ERRMSG, index);
 
-  for (UINT i = 0; i < varPos.size(); i++)
-    {
-	  var = FCurrentStack->Get(varPos[i].c_str());
+			if (var->type == SCNUM)
+			  {
+				float f, num = FCurrentStack->GetNumElement(var);
 
-      if (var)
-        {
-          if (SCNUM == var->type)
-            {
-              float f, num;
+				if (modf(num, &f) == 0)
+				  swprintf(str, L"%.0f", num);
+				else
+				  swprintf(str, FRMTNUM, num);
 
-			  num = FCurrentStack->GetNumElement(var);
-
-              if (modf(num, &f) == 0)
-                swprintf(str, L"%.0f", num);
-              else
-                swprintf(str, FRMTNUM, num);
-
-			  operstr = ParseStringW(operstr, varPos[i], str);
-            }
-          else if (SCSTR == var->type) //если переменная - строка, все выражение должно быть строкой
-            {
+				operstr = ParseStringW(operstr, varPos[i], str);
+			  }
+			else if (var->type == SCSTR) //если переменная - строка, все выражение должно быть строкой
 			  operstr = ParseStringW(operstr, varPos[i], FCurrentStack->GetStrElement(var));
-            }
-          else
-            {
-              AddInfoMsg(LREXPRERR, ERRMSG, index);
+			else
+			  throw Exception(LREXPRERR);
+		  }
 
-              return false;
-			}
-        }
-      else
-        {
-          AddInfoMsg(UNKVARNAME, ERRMSG, index);
+	   wcscpy(expr, operstr.c_str());
 
-          if (FDebugMode)
-            {
-              WriteELIDebug(L"ParseVarInExp", varPos[i].c_str());
-              WriteELIDebug(L"ParseVarInExp", L"[FAIL]");
-            }
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"ParseVarInExp", expr);
+		   WriteELIDebug(L"ParseVarInExp", DBGOK);
+		 }
 
-          return false;
-        }
-    }
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Parsing variables: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
 
-  wcscpy(expr, operstr.c_str());
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"ParseVarInExp", expr);
+		   WriteELIDebug(L"ParseVarInExp", DBGFL);
+		 }
 
-  if (FDebugMode)
-    {
-      WriteELIDebug(L"ParseVarInExp", expr);
-      WriteELIDebug(L"ParseVarInExp", L"[OK]");
-    }
+	   res = false;
+	 }
 
-  return true;
+  return res;
 }
 //-------------------------------------------------------------------------------
 
 bool ELI::ParseFuncsInExp(wchar_t *expr, UINT index)
 {
+  bool res = false;
+
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseFuncsInExp", L"[START]");
+	  WriteELIDebug(L"ParseFuncsInExp", DBGST);
       WriteELIDebug(L"ParseFuncsInExp", expr);
-    }
+	}
 
-  std::wstring operstr = expr;
-  UINT op, pos;
+  try
+	 {
+	   std::wstring operstr = expr;
+	   UINT op, pos;
 
-  while (operstr.find_last_of(FUNCSYM) != std::wstring::npos)
-    {
-	  UINT fspos = operstr.find_last_of(FUNCSYM);
-	  std::wstring fstr = operstr.substr(fspos, operstr.length() - fspos);
+	   while (operstr.find_last_of(FUNCSYM) != std::wstring::npos)
+		 {
+		   UINT fspos = operstr.find_last_of(FUNCSYM);
+		   std::wstring fstr = operstr.substr(fspos, operstr.length() - fspos);
 
 //уберем лишние закрывающие скобки
-      op = _wstrccount(fstr.c_str(), '(');
+		   op = _wstrccount(fstr.c_str(), '(');
 
 //нет закр. скобок - символ "_" не является признаком функции
 //делаем возврат истины, чтобы не стопорить интепретатор
-      if (op < 1)
-        return true;
+		   if (op < 1)
+			 return true;
 
-      while (_wstrccount(fstr.c_str(), ')') > op)
-        {
-		  pos = fstr.find_last_of(')');
-		  fstr.erase(pos, fstr.length() - pos);
-        }
+		   while (_wstrccount(fstr.c_str(), ')') > op)
+			 {
+			   pos = fstr.find_last_of(')');
+			   fstr.erase(pos, fstr.length() - pos);
+			 }
 
 //если между последней закр. скобкой и концом строки остались символы - уберем их
-	  pos = fstr.find_last_of(')');
+		   pos = fstr.find_last_of(')');
 
-	  if (pos && (pos < fstr.length() - 1))
-		fstr.erase(pos + 1, fstr.length() - pos - 1);
+		   if (pos && (pos < fstr.length() - 1))
+			 fstr.erase(pos + 1, fstr.length() - pos - 1);
 
-      wchar_t result[CHARSIZE], str[CHARSIZE];
+		   wchar_t result[CHARSIZE], str[CHARSIZE];
 
-      wcscpy(str, fstr.c_str());
+		   wcscpy(str, fstr.c_str());
 
-	  if (RunFunc(str, result, index))
-		operstr = ParseStringW(operstr, fstr, std::wstring(result));
-	  else
-		return false;
-    }
+		   if (!RunFunc(str, result, index))
+			 throw Exception(UNKERR);
 
-  wcscpy(expr, operstr.c_str());
+		   operstr = ParseStringW(operstr, fstr, std::wstring(result));
+		 }
 
-  if (FDebugMode)
-    {
-      WriteELIDebug(L"ParseFuncsInExp", expr);
-      WriteELIDebug(L"ParseFuncsInExp", L"[OK]");
-    }
+	   wcscpy(expr, operstr.c_str());
 
-  return true;
+	   if (FDebugMode)
+		 {
+		   WriteELIDebug(L"ParseFuncsInExp", expr);
+		   WriteELIDebug(L"ParseFuncsInExp", DBGOK);
+		 }
+
+	   res = true;
+	 }
+  catch (Exception &e)
+	 {
+	   AddInfoMsg(L"Parsing functions: error", ERRMSG, index);
+	   AddInfoMsg(e.ToString().c_str(), ERRMSG, index);
+
+	   if (FDebugMode)
+		 WriteELIDebug(L"ParseFuncsInExp", DBGFL);
+
+	   res = false;
+	 }
+
+  return res;
 }
 //-------------------------------------------------------------------------------
 
@@ -2237,7 +2216,7 @@ bool ELI::ParseObjectsInExp(wchar_t *expr, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseObjectsInExp", L"[START]");
+      WriteELIDebug(L"ParseObjectsInExp", DBGST);
       WriteELIDebug(L"ParseObjetcsInExp", expr);
     }
 
@@ -2298,7 +2277,7 @@ bool ELI::ParseObjectsInExp(wchar_t *expr, UINT index)
 	  obstr.erase(i, obstr.length() - i);
       wcscpy(str, RemoveSpaces(obstr.c_str()));
 
-      if (WorkWithObject(str, result, index))
+      if (ProcessObject(str, result, index))
 		operstr = ParseStringW(operstr, obstr, std::wstring(result));
       else
         return false;
@@ -2309,7 +2288,7 @@ bool ELI::ParseObjectsInExp(wchar_t *expr, UINT index)
   if (FDebugMode)
     {
       WriteELIDebug(L"ParseObjectsInExp", expr);
-      WriteELIDebug(L"ParseObjectsInExp", L"[OK]");
+      WriteELIDebug(L"ParseObjectsInExp", DBGOK);
     }
 
   return true;
@@ -2320,7 +2299,7 @@ bool ELI::ParseRefsInExp(wchar_t *expr, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseRefsInExp", L"[START]");
+      WriteELIDebug(L"ParseRefsInExp", DBGST);
       WriteELIDebug(L"ParseRefsInExp", expr);
     }
 
@@ -2400,7 +2379,7 @@ bool ELI::ParseRefsInExp(wchar_t *expr, UINT index)
   if (FDebugMode)
     {
       WriteELIDebug(L"ParseRefsInExp", expr);
-      WriteELIDebug(L"ParseRefsInExp", L"[OK]");
+      WriteELIDebug(L"ParseRefsInExp", DBGOK);
     }
 
   return true;
@@ -2411,7 +2390,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseIncObjects", L"[START]");
+      WriteELIDebug(L"ParseIncObjects", DBGST);
       WriteELIDebug(L"ParseIncObjects", expr);
     }
 
@@ -2422,7 +2401,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
   if (!ParseVarInExp(expr, index))
 	{
 	  if (FDebugMode)
-		WriteELIDebug(L"ParseIncObjects", L"[FAIL]");
+		WriteELIDebug(L"ParseIncObjects", DBGFL);
 
 	  return false;
 	}
@@ -2457,7 +2436,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
           AddInfoMsg(OBJNONE, ERRMSG, index);
 
           if (FDebugMode)
-            WriteELIDebug(L"ParseIncObjects", L"[FAIL]");
+            WriteELIDebug(L"ParseIncObjects", DBGFL);
 
           return false;
         }
@@ -2469,7 +2448,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
               AddInfoMsg(OBJMEMNOTACC, ERRMSG, index);
 
               if (FDebugMode)
-                WriteELIDebug(L"ParseIncObjects", L"[FAIL]");
+                WriteELIDebug(L"ParseIncObjects", DBGFL);
 
               return false;
             }
@@ -2497,7 +2476,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
 		  if (FDebugMode)
 			{
 			  WriteELIDebug(L"ParseIncObjects", methodstr);
-			  WriteELIDebug(L"ParseIncObjects", L"[FAIL]");
+			  WriteELIDebug(L"ParseIncObjects", DBGFL);
             }
 
 		  return false;
@@ -2511,7 +2490,7 @@ bool ELI::ParseIncObjects(wchar_t *expr, UINT index)
   if (FDebugMode)
     {
       WriteELIDebug(L"ParseIncObjects", expr);
-      WriteELIDebug(L"ParseIncObjects", L"[OK]");
+      WriteELIDebug(L"ParseIncObjects", DBGOK);
     }
 
   return true;
@@ -2522,7 +2501,7 @@ float *ELI::CalcExpNum(wchar_t *expr, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"CalcExpNum", L"[START]");
+      WriteELIDebug(L"CalcExpNum", DBGST);
 	  WriteELIDebug(L"CalcExpNum", expr);
     }
 
@@ -2642,7 +2621,7 @@ float *ELI::CalcExpNum(wchar_t *expr, UINT index)
 const wchar_t *ELI::CalcExpStr(wchar_t *expr, UINT index)
 {
   if (FDebugMode)
-    WriteELIDebug(L"CalcExpStr", L"[START]");
+    WriteELIDebug(L"CalcExpStr", DBGST);
 
   UINT pos;
   bool iscstr = false;
@@ -2701,7 +2680,7 @@ const wchar_t *ELI::ParseConstStrings(wchar_t *text)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ParseConstStrings", L"[START]");
+      WriteELIDebug(L"ParseConstStrings", DBGST);
       WriteELIDebug(L"ParseConstStrings", text);
     }
 
@@ -2777,7 +2756,7 @@ const wchar_t *ELI::ParseConstNumbers(wchar_t *text)
 {
   if (FDebugMode)
     {
-	  WriteELIDebug(L"ParseConstNumbers", L"[START]");
+	  WriteELIDebug(L"ParseConstNumbers", DBGST);
 	  WriteELIDebug(L"ParseConstNumbers", text);
     }
 
@@ -2905,7 +2884,7 @@ const wchar_t *ELI::ParseConstNumbers(wchar_t *text)
 SCRIPTLINES ELI::GetInclude(const wchar_t *str)
 {
   if (FDebugMode)
-	WriteELIDebug(L"GetInclude", L"[START]");
+	WriteELIDebug(L"GetInclude", DBGST);
 
   FCodeBuffer.clear();
 
@@ -2944,7 +2923,7 @@ const wchar_t *ELI::RemoveSpaces(const wchar_t *text)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"RemoveSpaces", L"[START]");
+      WriteELIDebug(L"RemoveSpaces", DBGST);
       WriteELIDebug(L"RemoveSpaces", text);
     }
 
@@ -3008,7 +2987,7 @@ std::wstring ELI::RemoveEndlines(std::wstring text)
 void ELI::PrepareScript()
 {
   if (FDebugMode)
-    WriteELIDebug(L"PrepareScript", L"[START]");
+    WriteELIDebug(L"PrepareScript", DBGST);
 
   UINT pos;
   std::wstring tmp;
@@ -3503,7 +3482,7 @@ bool ELI::TranslateLine(const wchar_t *line, UINT index)
 			  ParseIncObjects(str, index);
             }
 
-          return WorkWithObject(str, result, index);
+          return ProcessObject(str, result, index);
         }
     }
   else if (PROCSYM == str[0]) //в строке исп. запуск процедуры
@@ -3580,7 +3559,7 @@ bool ELI::TranslateLine(const wchar_t *line, UINT index)
 bool ELI::TranslateScriptLines()
 {
   if (FDebugMode)
-	WriteELIDebug(L"TranslateScriptLines", L"[START]");
+	WriteELIDebug(L"TranslateScriptLines", DBGST);
 
   try
 	 {
@@ -3643,14 +3622,14 @@ bool ELI::TranslateScriptLines()
        if (FDebugMode)
 		 {
 		   WriteELIDebug(L"TranslateScriptLines", e.ToString().c_str());
-		   WriteELIDebug(L"TranslateScriptLines", L"[FAIL]");
+		   WriteELIDebug(L"TranslateScriptLines", DBGFL);
 		 }
 
 	   return false;
      }
 
   if (FDebugMode)
-	WriteELIDebug(L"TranslateScriptLines", L"[OK]");
+	WriteELIDebug(L"TranslateScriptLines", DBGOK);
 
   return true;
 }
@@ -3659,7 +3638,7 @@ bool ELI::TranslateScriptLines()
 bool ELI::TranslateFragment(SCRIPTLINES *vecFragment, UINT index)
 {
   if (FDebugMode)
-	WriteELIDebug(L"TranslateFragment", L"[START]");
+	WriteELIDebug(L"TranslateFragment", DBGST);
 
   try
 	 {
@@ -3691,14 +3670,14 @@ bool ELI::TranslateFragment(SCRIPTLINES *vecFragment, UINT index)
 	   if (FDebugMode)
 		 {
 		   WriteELIDebug(L"TranslateFragment", e.ToString().c_str());
-		   WriteELIDebug(L"TranslateFragment", L"[FAIL]");
+		   WriteELIDebug(L"TranslateFragment", DBGFL);
 		 }
 
 	   return false;
 	 }
 
   if (FDebugMode)
-    WriteELIDebug(L"TranslateFragment", L"[OK]");
+    WriteELIDebug(L"TranslateFragment", DBGOK);
 
   return true;
 }
@@ -3707,7 +3686,7 @@ bool ELI::TranslateFragment(SCRIPTLINES *vecFragment, UINT index)
 std::wstring ELI::MarkFragments(std::wstring &operstr)
 {
   if (FDebugMode)
-    WriteELIDebug(L"MarkFragments", L"[START]");
+    WriteELIDebug(L"MarkFragments", DBGST);
 
   std::wstring fragmentstr, fm;
   wchar_t fmark[32];
@@ -3805,7 +3784,7 @@ int ELI::ExpTrue(std::wstring exp, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpTrue", L"[START]");
+      WriteELIDebug(L"ExpTrue", DBGST);
       WriteELIDebug(L"ExpTrue", exp.c_str());
     }
 
@@ -3961,7 +3940,7 @@ bool ELI::ExpIf(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpIf", L"[START]");
+      WriteELIDebug(L"ExpIf", DBGST);
       WriteELIDebug(L"ExpIf", line);
     }
 
@@ -4017,7 +3996,7 @@ bool ELI::ExpElseIf(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpElseIf", L"[START]");
+      WriteELIDebug(L"ExpElseIf", DBGST);
       WriteELIDebug(L"ExpElseIf", line);
     }
 
@@ -4077,7 +4056,7 @@ bool ELI::ExpElse(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpElse", L"[START]");
+      WriteELIDebug(L"ExpElse", DBGST);
       WriteELIDebug(L"ExpElse", line);
     }
 
@@ -4117,7 +4096,7 @@ bool ELI::ExpFor(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpFor", L"[START]");
+      WriteELIDebug(L"ExpFor", DBGST);
       WriteELIDebug(L"ExpFor", line);
     }
 
@@ -4449,7 +4428,7 @@ bool ELI::ExpCount(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpCount", L"[START]");
+      WriteELIDebug(L"ExpCount", DBGST);
       WriteELIDebug(L"ExpCount", line);
     }
 
@@ -4502,7 +4481,7 @@ bool ELI::ExpWhile(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpWhile", L"[START]");
+      WriteELIDebug(L"ExpWhile", DBGST);
       WriteELIDebug(L"ExpWhile", line);
     }
 
@@ -4539,7 +4518,7 @@ bool ELI::ExpSelect(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpSelect", L"[START]");
+      WriteELIDebug(L"ExpSelect", DBGST);
       WriteELIDebug(L"ExpSelect", line);
     }
 
@@ -4610,7 +4589,7 @@ bool ELI::ExpWhen(wchar_t *line, UINT index)
 {
   if (FDebugMode)
     {
-      WriteELIDebug(L"ExpWhen", L"[START]");
+      WriteELIDebug(L"ExpWhen", DBGST);
       WriteELIDebug(L"ExpWhen", line);
     }
 
@@ -4666,7 +4645,7 @@ bool ELI::VarInit(wchar_t *name, UINT type, wchar_t* defvalue, UINT index)
 {
   if (FDebugMode)
     {
-	  WriteELIDebug(L"VarInit", L"[START]");
+	  WriteELIDebug(L"VarInit", DBGST);
 	  String str = String(name) + " = " + String(defvalue);
       WriteELIDebug(L"VarInit", str.c_str());
     }
@@ -4789,7 +4768,7 @@ bool ELI::VarInit(wchar_t *name, UINT type, wchar_t* defvalue, UINT index)
 void ELI::InitTranslatorFuncs()
 {
   if (FDebugMode)
-    WriteELIDebug(L"InitTranslatorFuncs", L"[START]");
+    WriteELIDebug(L"InitTranslatorFuncs", DBGST);
 
   FFnStack->Add(L"_random", L"num pArea", &scRandom);
   FFnStack->Add(L"_round", L"num pNumber,num pPrecision", &scRound);
@@ -4917,7 +4896,7 @@ void ELI::InitRes(bool init)
 void ELI::FreeRes()
 {
   if (FDebugMode)
-	WriteELIDebug(L"FreeRes", L"[START]");
+	WriteELIDebug(L"FreeRes", DBGST);
 
   SearchAndMarkGlobalFragments();   //маркуємо всі глобальні фрагменти коду для
 									//збереження після трансляції скрипту
@@ -4945,7 +4924,7 @@ void ELI::FreeRes()
 void ELI::SaveELIState()
 {
   if (FDebugMode)
-    WriteELIDebug(L"SaveELIState", L"[START]");
+    WriteELIDebug(L"SaveELIState", DBGST);
 
   String file = LogPath + "\\state.log";
   wchar_t timestamp[64];
@@ -5050,7 +5029,7 @@ void ELI::WriteELIDebug(const wchar_t *event, const wchar_t *rec)
 HINSTANCE ELI::LoadExtLib(std::wstring &path)
 {
   if (FDebugMode)
-	WriteELIDebug(L"LoadExtLib", L"[START]");
+	WriteELIDebug(L"LoadExtLib", DBGST);
 
 //использован путь типа ".\file.eli" - используется текущий каталог
   if (path[0] == '.')
@@ -5080,7 +5059,7 @@ HINSTANCE ELI::LoadExtLib(std::wstring &path)
 bool ELI::FreeExtLib(HINSTANCE hnd)
 {
   if (FDebugMode)
-    WriteELIDebug(L"FreeExtLib", L"[START]");
+    WriteELIDebug(L"FreeExtLib", DBGST);
 
   if (!hnd)
 	return false;
@@ -5119,7 +5098,7 @@ bool ELI::FreeExtLib(HINSTANCE hnd)
 bool ELI::AddClassProperty(std::wstring &cl_name, std::wstring &prop_str, bool is_public, UINT index)
 {
   if (FDebugMode)
-	WriteELIDebug(L"AddClassProperty", L"[START]");
+	WriteELIDebug(L"AddClassProperty", DBGST);
 
   UINT pos = prop_str.find(L"=");
 
@@ -5185,7 +5164,7 @@ bool ELI::AddClassProperty(std::wstring &cl_name, std::wstring &prop_str, bool i
 bool ELI::AddClassMethod(std::wstring &cl_name, std::wstring &method_str, bool is_public, UINT index)
 {
   if (FDebugMode)
-	WriteELIDebug(L"AddClassMethod", L"[START]");
+	WriteELIDebug(L"AddClassMethod", DBGST);
 
   UINT op = method_str.find(L"("), cl = method_str.find(L")");
 
@@ -5328,7 +5307,7 @@ bool ELI::ImportParentClass(std::wstring child, std::wstring parent, bool type)
 				  if (FDebugMode)
 					{
 					  WriteELIDebug(L"ImportParentClass", std::wstring(parent + rec.PropertyID).c_str());
-					  WriteELIDebug(L"ImportParentClass", L"[FAIL]");
+					  WriteELIDebug(L"ImportParentClass", DBGFL);
 					}
 
 				  return false;
@@ -5356,7 +5335,7 @@ const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, 
 {
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"CreateTempObject", L"[START]");
+	  WriteELIDebug(L"CreateTempObject", DBGST);
 	  WriteELIDebug(L"CreateTempObject", ctor_str.c_str());
 	}
 
@@ -5391,7 +5370,7 @@ const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, 
   if (rs.size() == 0)
     {
       if (FDebugMode)
-		WriteELIDebug(L"CreateTempObject", L"[FAIL]");
+		WriteELIDebug(L"CreateTempObject", DBGFL);
 
       return L"0";
 	}
@@ -5426,7 +5405,7 @@ const wchar_t *ELI::CreateTempObject(std::wstring ctor_str, std::wstring owner, 
   if (FDebugMode)
 	{
 	  WriteELIDebug(L"CreateTempObject", FStrBuffer.c_str());
-	  WriteELIDebug(L"CreateTempObject", L"[OK]");
+	  WriteELIDebug(L"CreateTempObject", DBGOK);
 	}
 
   FStrBuffer = tmp; //повертаємо значення від початку функції, нівелюючи зміни рекурсії
@@ -5441,7 +5420,7 @@ bool ELI::DestroyObject(std::wstring &obj_name, UINT index)
 
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"DestroyObject", L"[START]");
+	  WriteELIDebug(L"DestroyObject", DBGST);
 	  WriteELIDebug(L"DestroyObject", obj_name.c_str());
 	}
 
@@ -5473,12 +5452,12 @@ bool ELI::DestroyObject(std::wstring &obj_name, UINT index)
 		 throw Exception(OBJNONE);
 
        if (FDebugMode)
-		 WriteELIDebug(L"DestroyObject", L"[OK]");
+		 WriteELIDebug(L"DestroyObject", DBGOK);
 	 }
   catch (Exception &e)
 	 {
 	   if (FDebugMode)
-		 WriteELIDebug(L"DestroyObject", L"[FAIL]");
+		 WriteELIDebug(L"DestroyObject", DBGFL);
 
 	   res = false;
 	 }
@@ -5493,7 +5472,7 @@ bool ELI::ImportMemberFromObject(std::wstring &obj_name, std::wstring &src_name,
 
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"ImportMemberFromObject", L"[START]");
+	  WriteELIDebug(L"ImportMemberFromObject", DBGST);
 	  WriteELIDebug(L"ImportMemberFromObject", obj_name.c_str());
 	}
 
@@ -5529,7 +5508,7 @@ bool ELI::ImportMemberFromObject(std::wstring &obj_name, std::wstring &src_name,
 			 FObjStack->Add({0, cath, obj_name, mb_name, val, YES, YES});
 
 		   if (FDebugMode)
-			 WriteELIDebug(L"ImportMemberFromObject", L"[OK]");
+			 WriteELIDebug(L"ImportMemberFromObject", DBGOK);
 
            res = true;
 		 }
@@ -5539,7 +5518,7 @@ bool ELI::ImportMemberFromObject(std::wstring &obj_name, std::wstring &src_name,
 	   if (FDebugMode)
 		 {
            WriteELIDebug(L"ImportMemberFromObject", e.ToString().c_str());
-		   WriteELIDebug(L"ImportMemberFromObject", L"[FAIL]");
+		   WriteELIDebug(L"ImportMemberFromObject", DBGFL);
 		 }
 
 	   res = false;
@@ -5555,7 +5534,7 @@ bool ELI::ImportMemberFromClass(std::wstring &obj_name, std::wstring &cl_name, s
 
   if (FDebugMode)
 	{
-	  WriteELIDebug(L"ImportMemberFromClass", L"[START]");
+	  WriteELIDebug(L"ImportMemberFromClass", DBGST);
 	  WriteELIDebug(L"ImportMemberFromClass", obj_name.c_str());
 	}
 
@@ -5605,14 +5584,14 @@ bool ELI::ImportMemberFromClass(std::wstring &obj_name, std::wstring &cl_name, s
 		 }
 
        if (FDebugMode)
-		 WriteELIDebug(L"ImportMemberFromClass", L"[OK]");
+		 WriteELIDebug(L"ImportMemberFromClass", DBGOK);
 	 }
   catch (Exception &e)
 	 {
 	   if (FDebugMode)
 		 {
 		   WriteELIDebug(L"ImportMemberFromClass", e.ToString().c_str());
-		   WriteELIDebug(L"ImportMemberFromClass", L"[FAIL]");
+		   WriteELIDebug(L"ImportMemberFromClass", DBGFL);
 		 }
 
 	   res = false;
@@ -5636,7 +5615,7 @@ const wchar_t * __stdcall ELI::GetVersion()
 const wchar_t * __stdcall ELI::RunScript(const wchar_t *imptext, const wchar_t *parameter, bool log)
 {
   if (FDebugMode)
-    WriteELIDebug(L"RunScript", L"[START]");
+    WriteELIDebug(L"RunScript", DBGST);
 
   FreeRes();
 
@@ -5702,7 +5681,7 @@ const wchar_t * __stdcall ELI::RunScript(const wchar_t *imptext, const wchar_t *
     {
 	  std::wstring msg = L"result = " + FResult;
       WriteELIDebug(L"RunScript", msg.c_str());
-      WriteELIDebug(L"RunScript", L"[OK]");
+      WriteELIDebug(L"RunScript", DBGOK);
 	}
 
   if (!FSettings.KeepObjects)
@@ -5718,7 +5697,7 @@ const wchar_t * __stdcall ELI::RunScript(const wchar_t *imptext, const wchar_t *
 const wchar_t * __stdcall ELI::RunScriptFromFile(const wchar_t *filepath, const wchar_t *parameter, bool log)
 {
   if (FDebugMode)
-    WriteELIDebug(L"RunScriptFromFile", L"[START]");
+    WriteELIDebug(L"RunScriptFromFile", DBGST);
 
   FreeRes();
 
@@ -5830,7 +5809,7 @@ const wchar_t * __stdcall ELI::RunScriptFromFile(const wchar_t *filepath, const 
 const wchar_t * __stdcall ELI::ShowVarStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowVarStack", L"[START]");
+    WriteELIDebug(L"ShowVarStack", DBGST);
 
   return FCurrentStack->GetString();
 }
@@ -5839,7 +5818,7 @@ const wchar_t * __stdcall ELI::ShowVarStack()
 const wchar_t * __stdcall ELI::ShowObjStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowObjStack", L"[START]");
+    WriteELIDebug(L"ShowObjStack", DBGST);
 
   return FObjStack->GetString();
 }
@@ -5848,7 +5827,7 @@ const wchar_t * __stdcall ELI::ShowObjStack()
 const wchar_t * __stdcall ELI::ShowClassStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowClassStack", L"[START]");
+    WriteELIDebug(L"ShowClassStack", DBGST);
 
   return FClStack->GetString();
 }
@@ -5857,7 +5836,7 @@ const wchar_t * __stdcall ELI::ShowClassStack()
 const wchar_t * __stdcall ELI::ShowProcStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowProcStack", L"[START]");
+    WriteELIDebug(L"ShowProcStack", DBGST);
 
   return FProcStack->GetString();
 }
@@ -5866,7 +5845,7 @@ const wchar_t * __stdcall ELI::ShowProcStack()
 const wchar_t * __stdcall ELI::ShowFragmentStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowFragmentStack", L"[START]");
+    WriteELIDebug(L"ShowFragmentStack", DBGST);
 
   return FFrgStack->GetString();
 }
@@ -5875,7 +5854,7 @@ const wchar_t * __stdcall ELI::ShowFragmentStack()
 const wchar_t * __stdcall ELI::ShowInfoMessages()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowInfoMessages", L"[START]");
+    WriteELIDebug(L"ShowInfoMessages", DBGST);
 
   return FInfStack.c_str();
 }
@@ -5884,7 +5863,7 @@ const wchar_t * __stdcall ELI::ShowInfoMessages()
 const wchar_t * __stdcall ELI::ShowFuncStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowFuncStack", L"[START]");
+    WriteELIDebug(L"ShowFuncStack", DBGST);
 
   return FFnStack->GetString();
 }
@@ -5893,7 +5872,7 @@ const wchar_t * __stdcall ELI::ShowFuncStack()
 const wchar_t * __stdcall ELI::ShowParamStack()
 {
   if (FDebugMode)
-    WriteELIDebug(L"ShowParamStack", L"[START]");
+    WriteELIDebug(L"ShowParamStack", DBGST);
 
   return FPrmStack->GetString();
 }
@@ -6193,7 +6172,7 @@ void __stdcall scRandom(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scRandom", L"[START]");
+	e_ptr->WriteELIDebug(L"scRandom", DBGST);
 
   try
 	 {
@@ -6220,7 +6199,7 @@ void __stdcall scRound(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scRound", L"[START]");
+	e_ptr->WriteELIDebug(L"scRound", DBGST);
 
   try
 	 {
@@ -6255,7 +6234,7 @@ void __stdcall scInt(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scInt", L"[START]");
+	e_ptr->WriteELIDebug(L"scInt", DBGST);
 
   try
 	 {
@@ -6280,7 +6259,7 @@ void __stdcall scStrLen(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scStrLen", L"[START]");
+	e_ptr->WriteELIDebug(L"scStrLen", DBGST);
 
   try
 	 {
@@ -6307,7 +6286,7 @@ void __stdcall scStrEq(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scStrEq", L"[START]");
+	e_ptr->WriteELIDebug(L"scStrEq", DBGST);
 
   try
 	 {
@@ -6332,7 +6311,7 @@ void __stdcall scIStrEq(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scIStrEq", L"[START]");
+    e_ptr->WriteELIDebug(L"scIStrEq", DBGST);
 
   try
 	 {
@@ -6357,7 +6336,7 @@ void __stdcall scSubStr(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scSubStr", L"[START]");
+	e_ptr->WriteELIDebug(L"scSubStr", DBGST);
 
   try
 	 {
@@ -6386,7 +6365,7 @@ void __stdcall scReturn(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scReturn", L"[START]");
+	e_ptr->WriteELIDebug(L"scReturn", DBGST);
 
   try
 	 {
@@ -6410,7 +6389,7 @@ void __stdcall scThrow(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scThrow", L"[START]");
+	e_ptr->WriteELIDebug(L"scThrow", DBGST);
 
   try
 	 {
@@ -6433,7 +6412,7 @@ void __stdcall scFree(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scFree", L"[START]");
+	e_ptr->WriteELIDebug(L"scFree", DBGST);
 
   try
 	 {
@@ -6464,7 +6443,7 @@ void __stdcall scLoadObjStack(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scLoadObjStack", L"[START]");
+	e_ptr->WriteELIDebug(L"scLoadObjStack", DBGST);
 
   try
 	 {
@@ -6502,7 +6481,7 @@ void __stdcall scSaveObjStack(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-   e_ptr->WriteELIDebug(L"scSaveObjStack", L"[START]");
+   e_ptr->WriteELIDebug(L"scSaveObjStack", DBGST);
 
   try
 	 {
@@ -6537,7 +6516,7 @@ void __stdcall scSaveObjects(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-   e_ptr->WriteELIDebug(L"scSaveObjects", L"[START]");
+   e_ptr->WriteELIDebug(L"scSaveObjects", DBGST);
 
   try
 	 {
@@ -6573,7 +6552,7 @@ void __stdcall scCompactObjStack(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scCompactObjStack", L"[START]");
+    e_ptr->WriteELIDebug(L"scCompactObjStack", DBGST);
 
   try
 	 {
@@ -6596,7 +6575,7 @@ void __stdcall scClearObjStack(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scClearObjStack", L"[START]");
+	e_ptr->WriteELIDebug(L"scClearObjStack", DBGST);
 
   try
 	 {
@@ -6619,7 +6598,7 @@ void __stdcall scRemoveObjects(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scRemoveObjects", L"[START]");
+    e_ptr->WriteELIDebug(L"scRemoveObjects", DBGST);
 
   try
 	 {
@@ -6648,7 +6627,7 @@ void __stdcall scRun(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scRun", L"[START]");
+    e_ptr->WriteELIDebug(L"scRun", DBGST);
 
   try
 	 {
@@ -6697,7 +6676,7 @@ void __stdcall scGetParamAsNum(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scGetParamAsNum", L"[START]");
+    e_ptr->WriteELIDebug(L"scGetParamAsNum", DBGST);
 
   try
 	 {
@@ -6732,7 +6711,7 @@ void __stdcall scGetParamAsStr(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scGetParamAsStr", L"[START]");
+	e_ptr->WriteELIDebug(L"scGetParamAsStr", DBGST);
 
   try
 	 {
@@ -6763,7 +6742,7 @@ void __stdcall scSetParam(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scSetParam", L"[START]");
+	e_ptr->WriteELIDebug(L"scSetParam", DBGST);
 
   try
 	 {
@@ -6793,7 +6772,7 @@ void __stdcall scLoadFileToVar(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scLoadFileToVar", L"[START]");
+    e_ptr->WriteELIDebug(L"scLoadFileToVar", DBGST);
 
   try
 	 {
@@ -6849,7 +6828,7 @@ void __stdcall scSaveVarToFile(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scSaveVarToFile", L"[START]");
+	e_ptr->WriteELIDebug(L"scSaveVarToFile", DBGST);
 
   try
 	 {
@@ -6899,7 +6878,7 @@ void __stdcall scSaveFragmentToFile(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scSaveFragmentToFile", L"[START]");
+	e_ptr->WriteELIDebug(L"scSaveFragmentToFile", DBGST);
 
   try
 	 {
@@ -6971,7 +6950,7 @@ void __stdcall scGetConfig(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scGetConfig", L"[START]");
+    e_ptr->WriteELIDebug(L"scGetConfig", DBGST);
 
   try
 	 {
@@ -7008,7 +6987,7 @@ void __stdcall scSaveState(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scSaveState", L"[START]");
+    e_ptr->WriteELIDebug(L"scSaveState", DBGST);
 
   try
 	 {
@@ -7031,7 +7010,7 @@ void __stdcall scSaveVarStack(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scSaveVarStack", L"[START]");
+    e_ptr->WriteELIDebug(L"scSaveVarStack", DBGST);
 
   try
 	 {
@@ -7056,7 +7035,7 @@ void __stdcall scWriteOut(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scWriteOut", L"[START]");
+    e_ptr->WriteELIDebug(L"scWriteOut", DBGST);
 
   try
 	 {
@@ -7104,7 +7083,7 @@ void __stdcall scReadIn(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scReadIn", L"[START]");
+    e_ptr->WriteELIDebug(L"scReadIn", DBGST);
 
   try
 	 {
@@ -7138,7 +7117,7 @@ void __stdcall scSystem(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scSystem", L"[START]");
+    e_ptr->WriteELIDebug(L"scSystem", DBGST);
 
   try
 	 {
@@ -7163,7 +7142,7 @@ void __stdcall scLastError(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scLastError", L"[START]");
+    e_ptr->WriteELIDebug(L"scLastError", DBGST);
 
   try
 	 {
@@ -7185,7 +7164,7 @@ void __stdcall scConnectLib(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scConnectLib", L"[START]");
+	e_ptr->WriteELIDebug(L"scConnectLib", DBGST);
 
   try
 	 {
@@ -7218,7 +7197,7 @@ void __stdcall scFreeLib(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scFreeLib", L"[START]");
+    e_ptr->WriteELIDebug(L"scFreeLib", DBGST);
 
   try
 	 {
@@ -7250,7 +7229,7 @@ void __stdcall scImportFunc(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scImportFunc", L"[START]");
+    e_ptr->WriteELIDebug(L"scImportFunc", DBGST);
 
   try
 	 {
@@ -7318,7 +7297,7 @@ void __stdcall scDebugIntoFile(void *p)
 	 }
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scDebugIntoFile", L"[START]");
+    e_ptr->WriteELIDebug(L"scDebugIntoFile", DBGST);
 }
 //-------------------------------------------------------------------------------
 
@@ -7339,7 +7318,7 @@ void __stdcall scDebugIntoScreen(void *p)
 	 }
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scDebugIntoScreen", L"[START]");
+    e_ptr->WriteELIDebug(L"scDebugIntoScreen", DBGST);
 }
 //-------------------------------------------------------------------------------
 
@@ -7348,7 +7327,7 @@ void __stdcall scStopDebug(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"scStopDebug", L"[START]");
+    e_ptr->WriteELIDebug(L"scStopDebug", DBGST);
 
   e_ptr->SetDebug(false, false);
 
@@ -7363,7 +7342,7 @@ void __stdcall scSleep(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scSleep", L"[START]");
+	e_ptr->WriteELIDebug(L"scSleep", DBGST);
 
   try
 	 {
@@ -7389,7 +7368,7 @@ void __stdcall scShowMessage(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"scShowMessage", L"[START]");
+	e_ptr->WriteELIDebug(L"scShowMessage", DBGST);
 
   try
 	 {
@@ -7417,7 +7396,7 @@ void __stdcall objCreate(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objCreate", L"[START]");
+	e_ptr->WriteELIDebug(L"objCreate", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
 
@@ -7499,7 +7478,7 @@ void __stdcall objDestroy(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objDestroy", L"[START]");
+	e_ptr->WriteELIDebug(L"objDestroy", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
   std::wstring objname = e_ptr->GetParamToStr(P_OBJNAME);
@@ -7532,7 +7511,7 @@ void __stdcall objAdd(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objAdd", L"[START]");
+	e_ptr->WriteELIDebug(L"objAdd", DBGST);
 
   UINT ind = e_ptr->ParamStack->Get(P_IND)->ToInt(); //получаем индекс строки
 
@@ -7587,7 +7566,7 @@ void __stdcall objRemove(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objRemove", L"[START]");
+    e_ptr->WriteELIDebug(L"objRemove", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
 
@@ -7622,7 +7601,7 @@ void __stdcall objExist(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objExist", L"[START]");
+    e_ptr->WriteELIDebug(L"objExist", DBGST);
 
   if (e_ptr->ObjStack->Get(obj_id, std::wstring(e_ptr->GetParamToStr(P_OBJNAME))).size() > 0)
     e_ptr->SetFunctionResult(L"Exist", L"1");
@@ -7639,7 +7618,7 @@ void __stdcall objHave(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objHave", L"[START]");
+    e_ptr->WriteELIDebug(L"objHave", DBGST);
 
   std::wstring objname = e_ptr->GetParamToStr(P_OBJNAME);
   std::wstring prop = e_ptr->GetParamToStr(L"pPropName");
@@ -7659,7 +7638,7 @@ void __stdcall objKeep(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objKeep", L"[START]");
+    e_ptr->WriteELIDebug(L"objKeep", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
   RESRECORDSET rs = e_ptr->ObjStack->Get(std::wstring(e_ptr->GetParamToStr(P_OBJNAME)),
@@ -7687,7 +7666,7 @@ void __stdcall objSave(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objSave", L"[START]");
+    e_ptr->WriteELIDebug(L"objSave", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
   RESRECORDSET rs = e_ptr->ObjStack->Get(std::wstring(e_ptr->GetParamToStr(P_OBJNAME)),
@@ -7715,7 +7694,7 @@ void __stdcall objExecute(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objExecute", L"[START]");
+    e_ptr->WriteELIDebug(L"objExecute", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
 
@@ -7771,7 +7750,7 @@ void __stdcall objShow(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-    e_ptr->WriteELIDebug(L"objShow", L"[START]");
+    e_ptr->WriteELIDebug(L"objShow", DBGST);
 
   std::wstring objname = e_ptr->GetParamToStr(P_OBJNAME);
   std::wstring outstr;
@@ -7798,7 +7777,7 @@ void __stdcall objClone(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objClone", L"[START]");
+	e_ptr->WriteELIDebug(L"objClone", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
 
@@ -7861,7 +7840,7 @@ void __stdcall objGetName(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objGetName", L"[START]");
+	e_ptr->WriteELIDebug(L"objGetName", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
   std::wstring objname = e_ptr->GetParamToStr(P_OBJNAME);
@@ -7890,7 +7869,7 @@ void __stdcall objImport(void *p)
   ELI *e_ptr = static_cast<ELI*>(p);
 
   if (e_ptr->DebugEnabled())
-	e_ptr->WriteELIDebug(L"objImport", L"[START]");
+	e_ptr->WriteELIDebug(L"objImport", DBGST);
 
   UINT ind = e_ptr->GetParamToInt(P_IND); //получаем индекс строки
 

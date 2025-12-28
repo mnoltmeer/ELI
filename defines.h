@@ -57,6 +57,7 @@ extern const wchar_t *FNNAMERR;
 extern const wchar_t *FNARGERR;
 extern const wchar_t *FNARGCNTERR;
 extern const wchar_t *FNEMPTYRES;
+extern const wchar_t *PROCNAMEXST;
 extern const wchar_t *PROCNAMERR;
 extern const wchar_t *PROCARGCNTERR;
 extern const wchar_t *PROCARGERR;
@@ -66,6 +67,8 @@ extern const wchar_t *NUMCONSLERR;
 extern const wchar_t *STRCONSLERR;
 extern const wchar_t *ILLGLOPER;
 extern const wchar_t *FRGMNTERR;
+extern const wchar_t *FRGMNTNOTFND;
+extern const wchar_t *FRGMNTCRTERR;
 extern const wchar_t *COUNTERR;
 extern const wchar_t *OBJINDERR;
 extern const wchar_t *OBJNAMEERR;
@@ -148,6 +151,9 @@ extern wchar_t STRSYM; //признак строкового типа (")
 extern const wchar_t *TROK;    //успішно
 extern const wchar_t *TRFAIL;  //помилка трансляції
 extern const wchar_t *TRINFO;  //повідомлення про помилку/подію
+extern const wchar_t *DBGST;   //повідомлення в лог дебагу при старті функції/методу
+extern const wchar_t *DBGOK;   //повідомлення в лог дебагу при успішному проходженні
+extern const wchar_t *DBGFL;   //повідомлення в лог дебагу при помилці
 
 #define STRBUFSTACK 4096   //макс. размер строкового буфера для экспорта содержимого стеков
 #define CHARSIZE 8192      //максимальная длина строкового типа в скрипте
